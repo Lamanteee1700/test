@@ -312,7 +312,8 @@ elif page == "Greeks Hedging Strategy":
     st.write(f"Add **{gamma_hedge_qty:.2f} units of option with strike {K2}** to reduce Gamma to near zero.")
 
     # Visualize effect of Delta + Gamma hedge
-    payoff_gamma_hedged = payoff_option + delta_hedge_qty*(S_range - S) + gamma_hedge_qty*np.maximum(S_range - K2,0 if option_type=="call" else K2 - S_range)
+    payoff_leg2 = (S_range - K2) if option_type=="call" else (K2 - S_range)
+    payoff_gamma_hedged = payoff_option + delta_hedge_qty*(S_range - S) + gamma_hedge_qty*np.maximum(payoff_leg2, 0)
 
     fig2, ax2 = plt.subplots(figsize=(8,4))
     ax2.plot(S_range, payoff_option, label="Original Option")
