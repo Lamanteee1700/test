@@ -33,7 +33,7 @@ def greeks(S, K, T, r, sigma, option="call"):
 
 
 # --- Sidebar Navigation ---
-page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory"])
+page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory", "Hedging Strategies"])
 
 # --- PAGE 1: Option Pricer ---
 if page == "Option Pricer":
@@ -192,3 +192,58 @@ elif page == "Theory":
        - Call: strike ≈ 130% of spot (much more expensive than stock).  
        - Put: strike ≈ 70% of spot (much cheaper than stock).  
     """)
+
+# --- PAGE 3: Hedging Strategies ---
+elif page == "Hedging Strategies":
+    st.title("🛡️ Hedging Strategies Dashboard")
+
+    st.sidebar.header("Strategy Builder")
+    S = st.sidebar.number_input("Spot Price (S)", value=100.0, step=1.0)
+    r = st.sidebar.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
+    T = st.sidebar.number_input("Time to Expiry (years)", value=0.5, step=0.1)
+    sigma = st.sidebar.number_input("Volatility (σ)", value=0.2, step=0.01)
+
+    st.sidebar.markdown("### Add Positions")
+    n_positions = st.sidebar.number_input("Number of Positions", min_value=1, max_value=5, value=2)
+    positions = []
+    for i in range(int(n_positions)):
+        st.sidebar.markdown(f"**Position {i+1}**")
+        option_type = st.sidebar.selectbox(f"Option Type {i+1}", ["call", "put"], key=f"type{i}")
+        direction = st.sidebar.selectbox(f"Direction {i+1}", ["long", "short"], key=f"dir{i}")
+        K = st.sidebar.number_input(f"Strike {i+1}", value=100.0, step=1.0, key=f"K{i}")
+        qty = st.sidebar.number_input(f"Quantity {i+1}", value=1, step=1, key=f"qty{i}")
+        positions.append((option_type, direction, K, qty))
+
+    # Compute payoff and combined Greeks
+    prices = np.linspace(0.5*S, 1.5*S, 200)
+    payoff = np.zeros_like(prices)
+    total_delta = total_gamma = total_vega = total_theta = total_rho = 0
+
+    for option_type, direction, K, qty in positions:
+        sign = 1 if direction=="long" else -1
+        payoff_leg = np.maximum(prices - K,0) if option_type=="call" else np.maximum(K - prices,0)
+        payoff += sign*qty*payoff_leg
+
+        d,g,v,t,r_ = greeks(S,K,T,r,sigma,option_type)
+        total_delta += sign*qty*d
+        total_gamma += sign*qty*g
+        total_vega  += sign*qty*v
+        total_theta += sign*qty*t
+        total_rho   += sign*qty*r_
+
+    # Plot payoff
+    fig, ax = plt.subplots(figsize=(8,4))
+    ax.plot(prices, payoff, label="Strategy Payoff")
+    ax.axhline(0, color="black", linestyle="--")
+    ax.axvline(S, color="blue", linestyle=":", label="Spot Price")
+    ax.set_xlabel("Stock Price at Expiry")
+    ax.set_ylabel("Payoff")
+    ax.legend()
+    st.pyplot(fig)
+
+    st.subheader("📊 Combined Greeks")
+    st.write(f"**Delta**: {total_delta:.3f}")
+    st.write(f"**Gamma**: {total_gamma:.3f}")
+    st.write(f"**Vega**: {total_vega:.3f}")
+    st.write(f"**Theta**: {total_theta:.3f}")
+    st.write(f"**Rho**: {total_rho:.3f}")
