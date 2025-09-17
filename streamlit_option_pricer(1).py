@@ -332,23 +332,6 @@ elif page == "Greeks Hedging Strategy":
     - Adding a second option reduces Gamma, keeping Delta more stable across price changes.  
     - This shows the principle of **dynamic hedging** in practice.
     """)
-
-# Function to fetch real-time VIX data from Polygon.io
-def fetch_vix_data(api_key):
-    url = f'https://api.polygon.io/v2/aggs/prev/index/VIX?apiKey={api_key}'
-    response = requests.get(url)
-    data = response.json()
-    return data['results'][0]['c'] if 'results' in data else None
-
-# Function to calculate Black-Scholes option price
-def black_scholes(S, K, T, r, sigma, option_type='call'):
-    d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
-    if option_type == 'call':
-        return S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
-    elif option_type == 'put':
-        return K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
-
 # --- PAGE 5: Volatility Strategies ---
 elif page == "Volatility Strategies":
     st.title("📈 Volatility Strategies: Vega, VIX, and Volatility Surfaces")
@@ -361,7 +344,22 @@ elif page == "Volatility Strategies":
     - **Volatility Smile**: Understanding how implied volatility varies with strike prices.
     - **3D Volatility Surface**: Visualizing implied volatility across different strikes and expirations.
     """)
+    # Function to fetch real-time VIX data from Polygon.io
+    def fetch_vix_data(api_key):
+        url = f'https://api.polygon.io/v2/aggs/prev/index/VIX?apiKey={api_key}'
+        response = requests.get(url)
+        data = response.json()
+        return data['results'][0]['c'] if 'results' in data else None
     
+    # Function to calculate Black-Scholes option price
+    def black_scholes(S, K, T, r, sigma, option_type='call'):
+        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+        d2 = d1 - sigma * np.sqrt(T)
+        if option_type == 'call':
+            return S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+        elif option_type == 'put':
+            return K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+            
     # Fetch and display real-time VIX data
     api_key = 'your_polygon_api_key'
     vix_value = fetch_vix_data(api_key)
