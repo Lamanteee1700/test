@@ -1,15 +1,10 @@
-# streamlit_bs_pricer.py
-# Simple Streamlit app for European option pricing with Black–Scholes formula.
-# Uses Yahoo Finance data for real-world spot, strike, and expiry handling.
-# Run: streamlit run streamlit_bs_pricer.py
-
 import streamlit as st
 import numpy as np
 import yfinance as yf
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
-# --- Black-Scholes Greeks ---
+# --- Black-Scholes Functions ---
 def d1(S, K, T, r, sigma):
     return (np.log(S/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
 
@@ -35,62 +30,113 @@ def greeks(S, K, T, r, sigma, option="call"):
 
     return delta, gamma, vega, theta, rho
 
-# --- Streamlit App ---
-st.title("📊 Black-Scholes Option Pricer with Greeks Dashboard")
 
-ticker = st.text_input("Enter Stock Ticker (Yahoo Finance)", "AAPL")
-data = yf.Ticker(ticker).history(period="1d")
-S = data["Close"].iloc[-1]
+# --- Sidebar Navigation ---
+page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory"])
 
-st.write(f"Current {ticker} Price: **{S:.2f}**")
+# --- PAGE 1: Option Pricer ---
+if page == "Option Pricer":
+    st.title("📊 Black-Scholes Option Pricer with Greeks Dashboard")
 
-K = st.number_input("Strike Price", value=150.0)
-T_days = st.number_input("Time to Expiry (days)", value=30)
-r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
-sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
-option_type = st.selectbox("Option Type", ["call", "put"])
+    ticker = st.text_input("Enter Stock Ticker (Yahoo Finance)", "AAPL")
+    data = yf.Ticker(ticker).history(period="1d")
+    S = data["Close"].iloc[-1]
+    st.write(f"Current {ticker} Price: **{S:.2f}**")
 
-T = T_days/365
+    K = st.number_input("Strike Price", value=150.0)
+    T_days = st.number_input("Time to Expiry (days)", value=30)
+    r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
+    sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
+    option_type = st.selectbox("Option Type", ["call", "put"])
 
-price = bs_price(S, K, T, r, sigma, option=option_type)
-delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
+    T = T_days/365
 
-st.subheader("💡 Option Price")
-st.write(f"{option_type.capitalize()} Price: **{price:.2f}**")
+    price = bs_price(S, K, T, r, sigma, option=option_type)
+    delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
 
-# --- Greeks Dashboard ---
-st.subheader("📊 Greeks Dashboard")
-st.table({
-    "Delta": [round(delta, 4)],
-    "Gamma": [round(gamma, 4)],
-    "Vega": [round(vega, 4)],
-    "Theta": [round(theta, 4)],
-    "Rho": [round(rho, 4)]
-})
+    st.subheader("💡 Option Price")
+    st.write(f"{option_type.capitalize()} Price: **{price:.2f}**")
 
-# --- Greeks Graph ---
-st.subheader("📈 Greeks Sensitivity Graphs")
-greek_choice = st.selectbox("Choose a Greek to plot", ["Delta", "Gamma", "Vega", "Theta", "Rho"])
+    # Greeks Dashboard
+    st.subheader("📊 Greeks Dashboard")
+    st.table({
+        "Delta": [round(delta, 4)],
+        "Gamma": [round(gamma, 4)],
+        "Vega": [round(vega, 4)],
+        "Theta": [round(theta, 4)],
+        "Rho": [round(rho, 4)]
+    })
 
-S_range = np.linspace(S*0.7, S*1.3, 100)
-values = []
+    # Greeks Graph
+    st.subheader("📈 Greeks Sensitivity Graphs")
+    greek_choices = st.multiselect(
+        "Choose Greeks to plot",
+        ["Delta", "Gamma", "Vega", "Theta", "Rho"],
+        default=["Delta"]
+    )
 
-for S_val in S_range:
-    d, g, v, t, r_ = greeks(S_val, K, T, r, sigma, option=option_type)
-    if greek_choice == "Delta":
-        values.append(d)
-    elif greek_choice == "Gamma":
-        values.append(g)
-    elif greek_choice == "Vega":
-        values.append(v)
-    elif greek_choice == "Theta":
-        values.append(t)
-    elif greek_choice == "Rho":
-        values.append(r_)
+    S_range = np.linspace(S*0.7, S*1.3, 100)
+    greeks_dict = {"Delta": [], "Gamma": [], "Vega": [], "Theta": [], "Rho": []}
 
-fig, ax = plt.subplots()
-ax.plot(S_range, values, label=greek_choice)
-ax.set_xlabel("Stock Price")
-ax.set_ylabel(greek_choice)
-ax.legend()
-st.pyplot(fig)
+    for S_val in S_range:
+        d, g, v, t, r_ = greeks(S_val, K, T, r, sigma, option=option_type)
+        greeks_dict["Delta"].append(d)
+        greeks_dict["Gamma"].append(g)
+        greeks_dict["Vega"].append(v)
+        greeks_dict["Theta"].append(t)
+        greeks_dict["Rho"].append(r_)
+
+    fig, ax = plt.subplots()
+    for g in greek_choices:
+        ax.plot(S_range, greeks_dict[g], label=g)
+
+    ax.axvline(K, color="red", linestyle="--", label="Strike Price")
+    ax.set_xlabel("Stock Price")
+    ax.set_ylabel("Value")
+    ax.legend()
+    st.pyplot(fig)
+
+
+# --- PAGE 2: Theory ---
+elif page == "Theory":
+    st.title("📖 Black-Scholes Model: Theory & Assumptions")
+
+    st.markdown("""
+    ### Assumptions
+    - The stock follows a **geometric Brownian motion** with constant drift and volatility.  
+    - No arbitrage opportunities.  
+    - Markets are frictionless (no transaction costs, infinite divisibility).  
+    - Constant risk-free interest rate.  
+    - European-style options (exercise only at expiry).  
+
+    ### Black–Scholes PDE
+    The option price \\( V(S,t) \\) satisfies:
+    $$
+    \frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} 
+    + rS \frac{\partial V}{\partial S} - rV = 0
+    $$
+
+    ### Closed-form Solution
+    For a **European Call**:
+    $$
+    C(S, t) = S N(d_1) - K e^{-rT} N(d_2)
+    $$
+
+    For a **European Put**:
+    $$
+    P(S, t) = K e^{-rT} N(-d_2) - S N(-d_1)
+    $$
+
+    where:
+    $$
+    d_1 = \frac{\ln(S/K) + (r + \frac{1}{2}\sigma^2)T}{\sigma \sqrt{T}}, \quad
+    d_2 = d_1 - \sigma \sqrt{T}
+    $$
+
+    ### Greeks
+    - **Delta (Δ)**: sensitivity to stock price.  
+    - **Gamma (Γ)**: rate of change of Delta.  
+    - **Vega (ν)**: sensitivity to volatility.  
+    - **Theta (Θ)**: sensitivity to time.  
+    - **Rho (ρ)**: sensitivity to interest rate.  
+    """)
