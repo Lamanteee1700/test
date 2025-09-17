@@ -33,7 +33,7 @@ def greeks(S, K, T, r, sigma, option="call"):
 
 
 # --- Sidebar Navigation ---
-page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory", "Hedging Strategies"])
+page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory", "Option Combinations Builder", "Greeks Hedging Strategy"])
 
 # --- PAGE 1: Option Pricer ---
 if page == "Option Pricer":
@@ -193,11 +193,10 @@ elif page == "Theory":
        - Put: strike ≈ 70% of spot (much cheaper than stock).  
     """)
 
-# --- PAGE 3: Hedging Strategies ---
-elif page == "Hedging Strategies":
-    st.title("🛡️ Hedging Strategies Dashboard")
+# --- PAGE 3: Option Combinations Builder ---
+elif page == "Option Combinations Builder":
+    st.title("🛡️ Option Combinations Builder")
 
-    st.sidebar.header("Strategy Builder")
     S = st.sidebar.number_input("Spot Price (S)", value=100.0, step=1.0)
     r = st.sidebar.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
     T = st.sidebar.number_input("Time to Expiry (years)", value=0.5, step=0.1)
@@ -247,3 +246,94 @@ elif page == "Hedging Strategies":
     st.write(f"**Vega**: {total_vega:.3f}")
     st.write(f"**Theta**: {total_theta:.3f}")
     st.write(f"**Rho**: {total_rho:.3f}")
+
+# PAGE 4: Greeks Hedging Strategy
+elif page == "Greeks Hedging Strategy":
+    st.title("🧮 Greeks Hedging Strategies")
+    
+    st.markdown("""
+    This page helps you **understand how to hedge the main option Greeks**: Delta, Gamma, and Vega.
+    You will see **Delta hedging with the underlying stock**, and simplified approaches for **Gamma/Vega hedging** using other options.
+    """)
+
+    st.subheader("Step 1: Select Option Position")
+    S = st.number_input("Spot Price (S)", value=100.0, step=1.0)
+    K = st.number_input("Strike Price (K)", value=100.0, step=1.0)
+    T = st.number_input("Time to Expiry (years)", value=0.5, step=0.1)
+    r = st.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
+    sigma = st.number_input("Volatility (σ)", value=0.2, step=0.01)
+    option_type = st.selectbox("Option Type", ["call", "put"])
+
+    st.subheader("Step 2: Choose Greek to Hedge")
+    greek_to_hedge = st.selectbox("Greek", ["Delta", "Gamma", "Vega"])
+
+    # Compute original option Greeks
+    delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option_type)
+    st.markdown(f"**Original Option Greeks:** Delta={delta:.3f}, Gamma={gamma:.3f}, Vega={vega:.3f}")
+
+    # -------------------------------
+    # DELTA HEDGING
+    # -------------------------------
+    if greek_to_hedge == "Delta":
+        st.subheader("🔹 Delta Hedging")
+        st.markdown("""
+        Delta hedging involves buying/selling the underlying stock to neutralize the Delta of the option.
+        The hedge ratio is simply the negative of the option's Delta.
+        """)
+        hedge_qty = -delta  # shares to buy/sell
+        st.write(f"To hedge Delta, you would **buy/sell {hedge_qty:.2f} shares** of the underlying.")
+
+        # Visualize effect
+        S_range = np.linspace(S*0.7, S*1.3, 100)
+        payoff_original = np.maximum(S_range - K,0) if option_type=="call" else np.maximum(K - S_range,0)
+        payoff_hedged = payoff_original + hedge_qty*(S_range - S)
+
+        st.markdown("**Payoff Visualization:** Original vs Delta-Hedged Position")
+        fig, ax = plt.subplots(figsize=(8,4))
+        ax.plot(S_range, payoff_original, label="Original Option")
+        ax.plot(S_range, payoff_hedged, label="Delta-Hedged Position")
+        ax.axhline(0, color="black", linestyle="--")
+        ax.axvline(S, color="blue", linestyle=":", label="Spot Price")
+        ax.set_xlabel("Stock Price at Expiry")
+        ax.set_ylabel("Payoff")
+        ax.legend()
+        st.pyplot(fig)
+
+    # -------------------------------
+    # GAMMA HEDGING
+    # -------------------------------
+    elif greek_to_hedge == "Gamma":
+        st.subheader("🔹 Gamma Hedging")
+        st.markdown("""
+        Gamma measures the rate of change of Delta. To hedge Gamma, you combine **options with different strikes or expiries**.
+        This is called a **Gamma-neutral strategy**.
+        
+        For simplicity, we simulate using a second option:
+        - Buy a second option with opposite Gamma to reduce total Gamma.
+        """)
+        st.markdown("⚠️ This is a simplified example. In practice, multiple options may be required.")
+
+        # Example: use another option to reduce Gamma
+        # Here we simulate a second option with K2 = 1.05*S
+        K2 = round(1.05*S,2)
+        delta2, gamma2, vega2, _, _ = greeks(S, K2, T, r, sigma, option_type)
+        hedge_ratio = -gamma / gamma2 if gamma2 != 0 else 0
+        st.write(f"Add **{hedge_ratio:.2f} units of option with strike {K2}** to reduce Gamma to near zero.")
+
+    # -------------------------------
+    # VEGA HEDGING
+    # -------------------------------
+    elif greek_to_hedge == "Vega":
+        st.subheader("🔹 Vega Hedging")
+        st.markdown("""
+        Vega measures sensitivity to volatility. To hedge Vega, you combine options with **different expiries**.
+        This creates a **Vega-neutral position**.
+        
+        For simplicity, we simulate using a second option with longer expiry.
+        """)
+        # Example: second option T2 = 1.2*T
+        T2 = 1.2*T
+        delta2, gamma2, vega2, _, _ = greeks(S, K, T2, r, sigma, option_type)
+        hedge_ratio = -vega / vega2 if vega2 != 0 else 0
+        st.write(f"Add **{hedge_ratio:.2f} units of option with T={T2:.2f} years** to reduce Vega to near zero.")
+
