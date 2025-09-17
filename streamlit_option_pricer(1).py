@@ -3,6 +3,7 @@ import numpy as np
 import yfinance as yf
 from scipy.stats import norm
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # --- Black-Scholes Functions ---
 def d1(S, K, T, r, sigma):
