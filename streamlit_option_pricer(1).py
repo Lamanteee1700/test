@@ -43,12 +43,41 @@ if page == "Option Pricer":
     S = data["Close"].iloc[-1]
     st.write(f"Current {ticker} Price: **{S:.2f}**")
 
-    K = st.number_input("Strike Price", value=150.0)
+    # --- Time, rates, vol ---
     T_days = st.number_input("Time to Expiry (days)", value=30)
     r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
     sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
     option_type = st.selectbox("Option Type", ["call", "put"])
 
+    # --- Strike price selection ---
+    st.subheader("Strike Price Selection")
+    
+    strike_mode = st.radio(
+        "Choose Strike Price Mode",
+        ["ATM", "Deep ITM", "Deep OTM", "Custom"],
+        index=0
+    )
+    
+    if strike_mode == "ATM":
+        K = round(S, 2)
+    
+    elif strike_mode == "Deep ITM":
+        if option_type == "call":
+            K = round(S * 0.7, 2)
+        else:
+            K = round(S * 1.3, 2)
+    
+    elif strike_mode == "Deep OTM":
+        if option_type == "call":
+            K = round(S * 1.3, 2)
+        else:
+            K = round(S * 0.7, 2)
+    
+    else:  # Custom
+        K = st.number_input("Custom Strike Price", value=round(S, 2))
+    
+    st.write(f"Selected Strike Price: **{K}**")
+    
     T = T_days/365
 
     price = bs_price(S, K, T, r, sigma, option=option_type)
