@@ -407,7 +407,7 @@ elif page == "Volatility Strategies":
     sigma_base = st.number_input("Base Volatility (σ)", value=0.2, step=0.01)
     
     sigma_range = np.linspace(0.1, 0.5, 50)
-    price_range = [black_scholes(S, K, T, r, s, option_type) for s in sigma_range]
+    price_range = [bs_price(S, K, T, r, s, option_type) for s in sigma_range]
     
     fig_vega = go.Figure(data=[go.Scatter(x=sigma_range, y=price_range, mode='lines', name='Option Price')])
     fig_vega.update_layout(title="Option Price vs Implied Volatility", xaxis_title="Implied Volatility", yaxis_title="Option Price")
