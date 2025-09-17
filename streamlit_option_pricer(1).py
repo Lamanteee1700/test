@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import yfinance as yf
 from scipy.stats import norm
+from scipy.optimize import brentq
 import matplotlib.pyplot as plt
 
 # --- Black-Scholes Functions ---
@@ -124,6 +125,19 @@ if page == "Option Pricer":
     ax.set_ylabel("Value")
     ax.legend()
     st.pyplot(fig)
+    
+    # Implied Volatility Calculator
+    st.subheader("📈 Implied Volatility Calculator")
+    market_price = st.number_input("Enter Market Option Price", min_value=0.0, step=0.1)
+    if market_price > 0:
+        def option_price_given_vol(vol):
+            return bs_price(S, K, T, r, vol, option_type) - market_price
+    
+        try:
+            implied_vol = brentq(option_price_given_vol, 1e-6, 5.0)
+            st.success(f"Implied Volatility: {implied_vol:.2%}")
+        except ValueError:
+            st.error("❌ Could not find implied volatility with given inputs.")
 
 
 # --- PAGE 2: Theory ---
@@ -167,5 +181,14 @@ elif page == "Theory":
     - **Gamma (Γ)**: rate of change of Delta.  
     - **Vega (ν)**: sensitivity to volatility.  
     - **Theta (Θ)**: sensitivity to time.  
-    - **Rho (ρ)**: sensitivity to interest rate.  
+    - **Rho (ρ)**: sensitivity to interest rate.
+    
+    ### Strike Price Scenarios  
+    - **ATM (At the Money)** → strike ≈ current spot price.  
+    - **Deep ITM (In the Money)**  
+       - Call: strike ≈ 70% of spot (much cheaper than stock).  
+       - Put: strike ≈ 130% of spot (much higher than stock).  
+    - **Deep OTM (Out of the Money)**  
+       - Call: strike ≈ 130% of spot (much more expensive than stock).  
+       - Put: strike ≈ 70% of spot (much cheaper than stock).  
     """)
