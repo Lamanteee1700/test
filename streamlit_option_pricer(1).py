@@ -348,8 +348,7 @@ def black_scholes(S, K, T, r, sigma, option_type='call'):
     elif option_type == 'put':
         return K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
 
-
-# --- PAGE 4: Volatility Strategies ---
+# --- PAGE 5: Volatility Strategies ---
 elif page == "Volatility Strategies":
     st.title("📈 Volatility Strategies: Vega, VIX, and Volatility Surfaces")
     
@@ -443,6 +442,6 @@ elif page == "Volatility Strategies":
     fig_vega.update_layout(title="Option Price vs Implied Volatility", xaxis_title="Implied Volatility", yaxis_title="Option Price")
     st.plotly_chart(fig_vega)
 
-st.markdown("""
-As shown, the option price increases with volatility, indicating positive vega exposure.
-""")
+    st.markdown("""
+    As shown, the option price increases with volatility, indicating positive vega exposure.
+    """)
