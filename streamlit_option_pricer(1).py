@@ -1,9 +1,9 @@
 import streamlit as st
+import requests
 import numpy as np
 import yfinance as yf
 from scipy.stats import norm
-from scipy.optimize import brentq
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 # --- Black-Scholes Functions ---
 def d1(S, K, T, r, sigma):
