@@ -4,110 +4,93 @@
 # Run: streamlit run streamlit_bs_pricer.py
 
 import streamlit as st
-from math import log, sqrt, exp, pi, erf
-from datetime import date
+import numpy as np
 import yfinance as yf
+from scipy.stats import norm
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Black–Scholes Pricer", layout="wide")
-st.title("🧮 Black–Scholes Option Pricer with Real Market Data")
+# --- Black-Scholes Greeks ---
+def d1(S, K, T, r, sigma):
+    return (np.log(S/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
 
-st.markdown("""
-This app prices European options (call/put) using the Black–Scholes formula.
-You can either enter parameters manually or fetch real stock data via Yahoo Finance.
-""")
+def d2(S, K, T, r, sigma):
+    return d1(S, K, T, r, sigma) - sigma*np.sqrt(T)
 
-# -------------------- Sidebar --------------------
-with st.sidebar:
-    st.header("Input method")
-    mode = st.radio("Choose input method", ["Manual", "Yahoo Finance"])
-
-    if mode == "Yahoo Finance":
-        ticker = st.text_input("Ticker symbol (e.g. AAPL, MSFT, TSLA)", "AAPL")
-        expiry = st.date_input("Expiry date", value=date(2025, 12, 19))
-        K = st.number_input("Strike price (K)", min_value=0.0, value=150.0, step=1.0)
-        option_type = st.selectbox("Option type", ["Call", "Put"])
-
-        st.markdown("---")
-        st.caption("Spot price will be fetched live. r and q are assumed constant.")
+def bs_price(S, K, T, r, sigma, option="call"):
+    if option == "call":
+        return S*norm.cdf(d1(S,K,T,r,sigma)) - K*np.exp(-r*T)*norm.cdf(d2(S,K,T,r,sigma))
     else:
-        option_type = st.selectbox("Option type", ["Call", "Put"])
-        S = st.number_input("Spot price (S)", min_value=0.0, value=100.0, step=1.0)
-        K = st.number_input("Strike price (K)", min_value=0.0, value=100.0, step=1.0)
-        days = st.number_input("Time to expiry (days)", min_value=0, value=30, step=1)
-        expiry = date.today().toordinal() + days
+        return K*np.exp(-r*T)*norm.cdf(-d2(S,K,T,r,sigma)) - S*norm.cdf(-d1(S,K,T,r,sigma))
 
-    r_pct = st.number_input("Risk‑free rate (annual %, r)", value=1.0, step=0.1)
-    q_pct = st.number_input("Dividend yield (annual %, q)", value=0.0, step=0.1)
-    sigma_pct = st.number_input("Volatility (annual %, sigma)", value=20.0, step=0.1)
+def greeks(S, K, T, r, sigma, option="call"):
+    d1_val = d1(S, K, T, r, sigma)
+    d2_val = d2(S, K, T, r, sigma)
 
-    r = r_pct / 100.0
-    q = q_pct / 100.0
-    sigma = sigma_pct / 100.0
+    delta = norm.cdf(d1_val) if option=="call" else -norm.cdf(-d1_val)
+    gamma = norm.pdf(d1_val) / (S * sigma * np.sqrt(T))
+    vega  = S * norm.pdf(d1_val) * np.sqrt(T) / 100
+    theta = (-(S*norm.pdf(d1_val)*sigma)/(2*np.sqrt(T)) 
+             - r*K*np.exp(-r*T)*norm.cdf(d2_val if option=="call" else -d2_val)) / 365
+    rho   = (K*T*np.exp(-r*T)*norm.cdf(d2_val if option=="call" else -d2_val)) / 100
 
-# -------------------- Math helpers --------------------
+    return delta, gamma, vega, theta, rho
 
-def norm_cdf(x):
-    return 0.5 * (1.0 + erf(x / sqrt(2.0)))
+# --- Streamlit App ---
+st.title("📊 Black-Scholes Option Pricer with Greeks Dashboard")
 
-def norm_pdf(x):
-    return (1.0 / sqrt(2.0 * pi)) * exp(-0.5 * x * x)
+ticker = st.text_input("Enter Stock Ticker (Yahoo Finance)", "AAPL")
+data = yf.Ticker(ticker).history(period="1d")
+S = data["Close"].iloc[-1]
 
-# -------------------- Black–Scholes pricing --------------------
+st.write(f"Current {ticker} Price: **{S:.2f}**")
 
-def bs_price(S, K, T, r, q, sigma, option_type="call"):
-    if T <= 0:
-        return max(0.0, (S - K) if option_type == "call" else (K - S))
+K = st.number_input("Strike Price", value=150.0)
+T_days = st.number_input("Time to Expiry (days)", value=30)
+r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
+sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
+option_type = st.selectbox("Option Type", ["call", "put"])
 
-    d1 = (log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / (sigma * sqrt(T))
-    d2 = d1 - sigma * sqrt(T)
+T = T_days/365
 
-    if option_type == "call":
-        return S * exp(-q * T) * norm_cdf(d1) - K * exp(-r * T) * norm_cdf(d2)
-    else:
-        return K * exp(-r * T) * norm_cdf(-d2) - S * exp(-q * T) * norm_cdf(-d1)
+price = bs_price(S, K, T, r, sigma, option=option_type)
+delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
 
-# -------------------- Greeks --------------------
+st.subheader("💡 Option Price")
+st.write(f"{option_type.capitalize()} Price: **{price:.2f}**")
 
-def bs_greeks(S, K, T, r, q, sigma, option_type="call"):
-    d1 = (log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / (sigma * sqrt(T))
-    d2 = d1 - sigma * sqrt(T)
+# --- Greeks Dashboard ---
+st.subheader("📊 Greeks Dashboard")
+st.table({
+    "Delta": [round(delta, 4)],
+    "Gamma": [round(gamma, 4)],
+    "Vega": [round(vega, 4)],
+    "Theta": [round(theta, 4)],
+    "Rho": [round(rho, 4)]
+})
 
-    delta_call = exp(-q * T) * norm_cdf(d1)
-    delta_put = exp(-q * T) * (norm_cdf(d1) - 1.0)
-    delta = delta_call if option_type == "call" else delta_put
+# --- Greeks Graph ---
+st.subheader("📈 Greeks Sensitivity Graphs")
+greek_choice = st.selectbox("Choose a Greek to plot", ["Delta", "Gamma", "Vega", "Theta", "Rho"])
 
-    gamma = exp(-q * T) * norm_pdf(d1) / (S * sigma * sqrt(T))
-    vega = S * exp(-q * T) * norm_pdf(d1) * sqrt(T)
+S_range = np.linspace(S*0.7, S*1.3, 100)
+values = []
 
-    theta_call = -(S * norm_pdf(d1) * sigma * exp(-q * T)) / (2 * sqrt(T)) - r * K * exp(-r * T) * norm_cdf(d2) + q * S * exp(-q * T) * norm_cdf(d1)
-    theta_put = -(S * norm_pdf(d1) * sigma * exp(-q * T)) / (2 * sqrt(T)) + r * K * exp(-r * T) * norm_cdf(-d2) - q * S * exp(-q * T) * norm_cdf(-d1)
-    theta = theta_call if option_type == "call" else theta_put
+for S_val in S_range:
+    d, g, v, t, r_ = greeks(S_val, K, T, r, sigma, option=option_type)
+    if greek_choice == "Delta":
+        values.append(d)
+    elif greek_choice == "Gamma":
+        values.append(g)
+    elif greek_choice == "Vega":
+        values.append(v)
+    elif greek_choice == "Theta":
+        values.append(t)
+    elif greek_choice == "Rho":
+        values.append(r_)
 
-    rho_call = K * T * exp(-r * T) * norm_cdf(d2)
-    rho_put = -K * T * exp(-r * T) * norm_cdf(-d2)
-    rho = rho_call if option_type == "call" else rho_put
-
-    return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta, "rho": rho}
-
-# -------------------- Compute --------------------
-
-if st.button("Price option"):
-    if mode == "Yahoo Finance":
-        data = yf.Ticker(ticker)
-        spot = data.history(period="1d")["Close"].iloc[-1]
-        S = float(spot)
-        st.info(f"Fetched spot price for {ticker}: {S:.2f}")
-
-        today = date.today()
-        T = (expiry - today).days / 365.0
-    else:
-        today = date.today()
-        T = (expiry - today.toordinal()) / 365.0
-
-    ot = option_type.lower()
-    price = bs_price(S, K, T, r, q, sigma, ot)
-    greeks = bs_greeks(S, K, T, r, q, sigma, ot)
-
-    st.success(f"Option price (Black–Scholes): {price:.4f}")
-    st.write("Greeks:")
-    st.json(greeks)
+fig, ax = plt.subplots()
+ax.plot(S_range, values, label=greek_choice)
+ax.set_xlabel("Stock Price")
+ax.set_ylabel(greek_choice)
+ax.legend()
+st.pyplot(fig)
