@@ -1,114 +1,77 @@
 # --- PAGE 3: Option Combinations Builder ---
-elif page == "Option Combinations Builder":
-    st.title("🛡️ Option Combinations Builder")
 
-    st.sidebar.header("Choose a Strategy")
-    
-    strategy_choice = st.sidebar.selectbox(
-        "Select a predefined strategy",
-        ["Custom", "ATM Straddle", "Strangle", "Protective Put", "Covered Call", "Iron Condor"]
-    )
-    
-    st.markdown(f"### 🎯 Current Strategy: {strategy_choice}")
-    
-    # Default parameters
-    S = 100  # Spot price (example, could link to Yahoo Finance)
-    K = 100
-    T = 0.5
-    r = 0.02
-    sigma = 0.2
-    
-    # Define option legs for each strategy
-    positions = []  # (option_type, direction, strike, quantity)
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+from utils import bs_price, greeks
 
-    if strategy_choice == "ATM Straddle":
-        st.write("**ATM Straddle:** Buy a call and a put at the ATM strike.")
-        positions = [("call", "long", S, 1), ("put", "long", S, 1)]
-        st.latex(r"\text{Payoff} = C(K) + P(K)")
-    elif strategy_choice == "Strangle":
-        st.write("**Strangle:** Buy OTM call and OTM put.")
-        K_call = int(S * 1.05)
-        K_put = int(S * 0.95)
-        positions = [("call", "long", K_call, 1), ("put", "long", K_put, 1)]
-        st.latex(r"\text{Payoff} = C(K_{call}) + P(K_{put})")
-    elif strategy_choice == "Protective Put":
-        st.write("**Protective Put:** Buy stock + long put for downside protection.")
-        positions = [("stock", "long", None, 1), ("put", "long", K, 1)]
-        st.latex(r"\text{Portfolio} = S + P(K)")
-    elif strategy_choice == "Covered Call":
-        st.write("**Covered Call:** Long stock + short call.")
-        positions = [("stock", "long", None, 1), ("call", "short", K, 1)]
-        st.latex(r"\text{Portfolio} = S - C(K)")
-    elif strategy_choice == "Iron Condor":
-        st.write("**Iron Condor:** Short OTM put, long further OTM put, short OTM call, long further OTM call.")
-        K1, K2, K3, K4 = int(S*0.9), int(S*0.95), int(S*1.05), int(S*1.1)
-        positions = [
-            ("put", "short", K2, 1), ("put", "long", K1, 1),
-            ("call", "short", K3, 1), ("call", "long", K4, 1)
-        ]
-        st.latex(r"\text{Payoff} = -P(K_2)+P(K_1)-C(K_3)+C(K_4)")
-    else:
-        st.write("**Custom Strategy:** Adjust parameters manually using the inputs below.")
-        S = st.number_input("Spot Price (S)", value=100.0, step=1.0)
-        K = st.number_input("Strike Price (K)", value=100.0, step=1.0)
-        T = st.number_input("Time to Expiry (years)", value=0.5, step=0.1)
-        r = st.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
-        sigma = st.number_input("Volatility (σ)", value=0.2, step=0.01)
-        positions = [("call", "long", K, 1)]  # simple default for custom
-    
-    # Greeks function (Black-Scholes)
-    def greeks(S, K, T, r, sigma, option_type):
-        from scipy.stats import norm
-        import numpy as np
-        d1 = (np.log(S / K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
-        d2 = d1 - sigma*np.sqrt(T)
-        if option_type == "call":
-            delta = norm.cdf(d1)
-        else:
-            delta = -norm.cdf(-d1)
-        gamma = norm.pdf(d1)/(S*sigma*np.sqrt(T))
-        vega = S*norm.pdf(d1)*np.sqrt(T)/100
-        theta = -(S*norm.pdf(d1)*sigma)/(2*np.sqrt(T)) - r*K*np.exp(-r*T)*norm.cdf(d2 if option_type=="call" else -d2)
-        rho = K*T*np.exp(-r*T)*(norm.cdf(d2) if option_type=="call" else -norm.cdf(-d2))/100
-        return delta, gamma, vega, theta, rho
-    
-    # Compute payoff & Greeks
-    prices = np.linspace(0.5*S, 1.5*S, 200)
-    payoff = np.zeros_like(prices)
-    total_delta = total_gamma = total_vega = total_theta = total_rho = 0
-    
-    for opt_type, direction, strike, qty in positions:
-        sign = 1 if direction=="long" else -1
-        if opt_type == "stock":
-            payoff += sign*qty*(prices - S)  # stock PnL
-            delta, gamma, vega, theta, rho = 1, 0, 0, 0, 0
-        else:
-            payoff_leg = np.maximum(prices-strike,0) if opt_type=="call" else np.maximum(strike-prices,0)
-            payoff += sign*qty*payoff_leg
-            d,g,v,t,rho = greeks(S,strike,T,r,sigma,opt_type)
-            delta, gamma, vega, theta, rho = d,g,v,t,rho
-        
-        total_delta += sign*qty*delta
-        total_gamma += sign*qty*gamma
-        total_vega  += sign*qty*vega
-        total_theta += sign*qty*theta
-        total_rho   += sign*qty*rho
+# Page title
+st.title("📐 Option Combinations Builder")
 
-    # Plot payoff
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(8,4))
-    ax.plot(prices, payoff, label="Strategy Payoff")
-    ax.axhline(0, color="black", linestyle="--")
-    ax.axvline(S, color="blue", linestyle=":", label="Spot Price")
-    ax.set_xlabel("Stock Price at Expiry")
-    ax.set_ylabel("Payoff")
+st.markdown("""
+This tool lets you build and analyze common **option strategies**.  
+Choose a strategy from the sidebar or create your own custom one.
+""")
+
+# Sidebar strategy selector
+strategy = st.sidebar.selectbox(
+    "Select Strategy",
+    ["Custom", "Straddle", "Strangle", "Bull Call Spread", "Bear Put Spread", "Iron Condor"]
+)
+
+# Parameters
+st.subheader("Strategy Parameters")
+S = st.number_input("Underlying Price (S)", value=100.0)
+K = st.number_input("Strike Price (K)", value=100.0)
+T = st.number_input("Time to Maturity (T in years)", value=1.0)
+r = st.number_input("Risk-Free Rate (r)", value=0.01)
+sigma = st.number_input("Volatility (σ)", value=0.2)
+
+# Strategy logic
+payoff = None
+stock_prices = np.linspace(S * 0.5, S * 1.5, 200)
+
+if strategy == "Custom":
+    st.info("Define your own payoff by combining calls and puts manually (to be implemented).")
+
+elif strategy == "Straddle":
+    payoff = [max(sp - K, 0) + max(K - sp, 0) for sp in stock_prices]
+    st.write("**Straddle:** Buy 1 Call and 1 Put at the same strike K.")
+
+elif strategy == "Strangle":
+    K_put = K * 0.95
+    K_call = K * 1.05
+    payoff = [max(sp - K_call, 0) + max(K_put - sp, 0) for sp in stock_prices]
+    st.write("**Strangle:** Buy 1 OTM Call and 1 OTM Put.")
+
+elif strategy == "Bull Call Spread":
+    K_low = K
+    K_high = K * 1.1
+    payoff = [max(sp - K_low, 0) - max(sp - K_high, 0) for sp in stock_prices]
+    st.write("**Bull Call Spread:** Buy Call at K, Sell Call at K_high.")
+
+elif strategy == "Bear Put Spread":
+    K_high = K
+    K_low = K * 0.9
+    payoff = [max(K_high - sp, 0) - max(K_low - sp, 0) for sp in stock_prices]
+    st.write("**Bear Put Spread:** Buy Put at K_high, Sell Put at K_low.")
+
+elif strategy == "Iron Condor":
+    K1, K2, K3, K4 = K * 0.9, K * 0.95, K * 1.05, K * 1.1
+    payoff = [
+        -max(K1 - sp, 0) + max(K2 - sp, 0) + max(sp - K3, 0) - max(sp - K4, 0)
+        for sp in stock_prices
+    ]
+    st.write("**Iron Condor:** Combination of Bull Put Spread and Bear Call Spread.")
+
+# Plot
+if payoff is not None:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(stock_prices, payoff, label=f"{strategy} Payoff", lw=2)
+    ax.axvline(S, color="gray", linestyle="--", label="Spot Price")
+    ax.axhline(0, color="black", lw=1)
+    ax.set_xlabel("Stock Price at Expiration")
+    ax.set_ylabel("Profit / Loss")
+    ax.set_title(f"{strategy} Payoff Diagram")
     ax.legend()
     st.pyplot(fig)
-
-    # Show Greeks
-    st.subheader("📊 Combined Greeks")
-    st.write(f"**Delta**: {total_delta:.3f}")
-    st.write(f"**Gamma**: {total_gamma:.3f}")
-    st.write(f"**Vega**: {total_vega:.3f}")
-    st.write(f"**Theta**: {total_theta:.3f}")
-    st.write(f"**Rho**: {total_rho:.3f}")
