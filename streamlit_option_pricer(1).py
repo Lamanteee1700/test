@@ -197,22 +197,51 @@ elif page == "Theory":
 elif page == "Option Combinations Builder":
     st.title("🛡️ Option Combinations Builder")
 
-    S = st.sidebar.number_input("Spot Price (S)", value=100.0, step=1.0)
-    r = st.sidebar.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
-    T = st.sidebar.number_input("Time to Expiry (years)", value=0.5, step=0.1)
-    sigma = st.sidebar.number_input("Volatility (σ)", value=0.2, step=0.01)
-
-    st.sidebar.markdown("### Add Positions")
-    n_positions = st.sidebar.number_input("Number of Positions", min_value=1, max_value=5, value=2)
-    positions = []
-    for i in range(int(n_positions)):
-        st.sidebar.markdown(f"**Position {i+1}**")
-        option_type = st.sidebar.selectbox(f"Option Type {i+1}", ["call", "put"], key=f"type{i}")
-        direction = st.sidebar.selectbox(f"Direction {i+1}", ["long", "short"], key=f"dir{i}")
-        K = st.sidebar.number_input(f"Strike {i+1}", value=100.0, step=1.0, key=f"K{i}")
-        qty = st.sidebar.number_input(f"Quantity {i+1}", value=1, step=1, key=f"qty{i}")
-        positions.append((option_type, direction, K, qty))
-
+    st.sidebar.header("Choose a Strategy")
+    
+    strategy_choice = st.sidebar.selectbox(
+        "Select a predefined strategy",
+        ["Custom", "ATM Straddle", "Strangle", "Protective Put", "Covered Call", "Iron Condor"]
+    )
+    
+    st.markdown(f"### 🎯 Current Strategy: {strategy_choice}")
+    
+    # Define how parameters change based on strategy
+    S = 100  # Spot price (for example, could link to real data)
+    K = 100
+    T = 0.5
+    r = 0.02
+    sigma = 0.2
+    
+    if strategy_choice == "ATM Straddle":
+        st.write("**ATM Straddle:** Buy a call and a put at the ATM strike.")
+        K = S  # ATM
+        st.latex(r" \text{Payoff} = C(K) + P(K) ")
+    elif strategy_choice == "Strangle":
+        st.write("**Strangle:** Buy OTM call and OTM put.")
+        K_call = int(S * 1.05)
+        K_put = int(S * 0.95)
+        st.latex(r" \text{Payoff} = C(K_{call}) + P(K_{put}) ")
+    elif strategy_choice == "Protective Put":
+        st.write("**Protective Put:** Buy stock + long put for downside protection.")
+        st.latex(r" \text{Portfolio} = S + P(K) ")
+    elif strategy_choice == "Covered Call":
+        st.write("**Covered Call:** Long stock + short call.")
+        st.latex(r" \text{Portfolio} = S - C(K) ")
+    elif strategy_choice == "Iron Condor":
+        st.write("**Iron Condor:** Short OTM put, long further OTM put, short OTM call, long further OTM call.")
+        st.latex(r" \text{Payoff} = -P(K_1) + P(K_2) - C(K_3) + C(K_4) ")
+    else:
+        st.write("**Custom Strategy:** Adjust parameters manually using the inputs below.")
+    
+    # If "Custom", show manual input fields
+    if strategy_choice == "Custom":
+        S = st.number_input("Spot Price (S)", value=100.0, step=1.0)
+        K = st.number_input("Strike Price (K)", value=100.0, step=1.0)
+        T = st.number_input("Time to Expiry (years)", value=0.5, step=0.1)
+        r = st.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
+        sigma = st.number_input("Volatility (σ)", value=0.2, step=0.01)
+        
     # Compute payoff and combined Greeks
     prices = np.linspace(0.5*S, 1.5*S, 200)
     payoff = np.zeros_like(prices)
