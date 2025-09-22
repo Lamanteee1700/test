@@ -1,4 +1,10 @@
 # PAGE 4: Greeks Hedging Strategy
+import streamlit as st
+import numpy as np
+import yfinance as yf
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from scipy.optimize import brentq
 from utils import greeks
 
 
