@@ -1,83 +1,91 @@
 # --- PAGE 5: Volatility Strategies ---
-elif page == "Volatility Strategies":
-    st.title("📈 Volatility Strategies: Vega, VIX, and Volatility Surfaces")
-    
-    st.markdown("""
-    This page delves into volatility trading strategies, focusing on:
-    
-    - **Vega exposure**: Sensitivity to changes in implied volatility.
-    - **VIX-based strategies**: Trading volatility using the VIX index.
-    - **Volatility Smile**: How implied volatility varies with strike prices.
-    - **3D Volatility Surface**: Implied volatility across strikes and maturities.
-    """)
-    
-    # ---------------------------
-    # Real-Time VIX data from Yahoo Finance
-    # ---------------------------
-    st.subheader("📊 Real-Time VIX Index")
-    vix = yf.Ticker("^VIX")
-    vix_data = vix.history(period="1d")
-    vix_value = vix_data['Close'][0]
-    st.write(f"**Current VIX Index Value**: {vix_value:.2f}")
-    
-    # ---------------------------
-    # Volatility Smile
-    # ---------------------------
-    st.subheader("🔹 Volatility Smile")
-    st.markdown("""
-    The **Volatility Smile** shows that implied volatility is higher for deep ITM and OTM options than ATM options.  
-    Understanding it helps price options accurately and identify mispricings.
-    """)
-    
-    strikes = np.linspace(80, 120, 10)
-    implied_vols = np.array([0.25, 0.28, 0.31, 0.33, 0.34, 0.33, 0.31, 0.28, 0.26, 0.25])
-    fig_smile = go.Figure(data=[go.Scatter(x=strikes, y=implied_vols, mode='lines+markers', name='Implied Volatility')])
-    fig_smile.update_layout(title="Volatility Smile", xaxis_title="Strike Price", yaxis_title="Implied Volatility")
-    st.plotly_chart(fig_smile)
-    
-    # ---------------------------
-    # 3D Volatility Surface
-    # ---------------------------
-    st.subheader("🔹 3D Volatility Surface")
-    st.markdown("""
-    The **3D Volatility Surface** shows implied volatility across strikes and expiration dates, providing insight into market expectations and skew.
-    """)
-    
-    strikes_3d = np.linspace(80, 120, 10)
-    maturities = np.linspace(30, 365, 10)
-    X, Y = np.meshgrid(strikes_3d, maturities)
-    Z = np.sin(X/10) * np.cos(Y/100) + 0.2  # Example surface
-    
-    fig_surface = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Viridis')])
-    fig_surface.update_layout(title="3D Volatility Surface", scene=dict(
-        xaxis_title='Strike Price',
-        yaxis_title='Time to Expiration (Days)',
-        zaxis_title='Implied Volatility'
-    ))
-    st.plotly_chart(fig_surface)
-    
-    # ---------------------------
-    # Vega Exposure
-    # ---------------------------
-    st.subheader("🔹 Vega Exposure")
-    st.markdown("""
-    **Vega** measures how the option price changes with a 1% change in implied volatility.  
-    Long Vega benefits from rising volatility; short Vega benefits from falling volatility.
-    """)
-    
-    # Option parameters
-    S = st.number_input("Spot Price (S)", value=100.0, step=1.0)
-    K = st.number_input("Strike Price (K)", value=100.0, step=1.0)
-    T = st.number_input("Time to Expiry (years)", value=0.5, step=0.1)
-    r = st.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
-    option_type = st.selectbox("Option Type", ["call", "put"])
-    sigma_base = st.number_input("Base Volatility (σ)", value=0.2, step=0.01)
-    
-    sigma_range = np.linspace(0.1, 0.5, 50)
-    price_range = [bs_price(S, K, T, r, s, option_type) for s in sigma_range]
-    
-    fig_vega = go.Figure(data=[go.Scatter(x=sigma_range, y=price_range, mode='lines', name='Option Price')])
-    fig_vega.update_layout(title="Option Price vs Implied Volatility", xaxis_title="Implied Volatility", yaxis_title="Option Price")
-    st.plotly_chart(fig_vega)
-    
-    st.markdown("As shown, the option price rises with volatility, indicating **positive vega exposure**.")
+import streamlit as st
+import numpy as np
+import yfinance as yf
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from scipy.optimize import brentq
+from utils import bs_price
+
+
+st.title("📈 Volatility Strategies: Vega, VIX, and Volatility Surfaces")
+
+st.markdown("""
+This page delves into volatility trading strategies, focusing on:
+
+- **Vega exposure**: Sensitivity to changes in implied volatility.
+- **VIX-based strategies**: Trading volatility using the VIX index.
+- **Volatility Smile**: How implied volatility varies with strike prices.
+- **3D Volatility Surface**: Implied volatility across strikes and maturities.
+""")
+
+# ---------------------------
+# Real-Time VIX data from Yahoo Finance
+# ---------------------------
+st.subheader("📊 Real-Time VIX Index")
+vix = yf.Ticker("^VIX")
+vix_data = vix.history(period="1d")
+vix_value = vix_data['Close'][0]
+st.write(f"**Current VIX Index Value**: {vix_value:.2f}")
+
+# ---------------------------
+# Volatility Smile
+# ---------------------------
+st.subheader("🔹 Volatility Smile")
+st.markdown("""
+The **Volatility Smile** shows that implied volatility is higher for deep ITM and OTM options than ATM options.  
+Understanding it helps price options accurately and identify mispricings.
+""")
+
+strikes = np.linspace(80, 120, 10)
+implied_vols = np.array([0.25, 0.28, 0.31, 0.33, 0.34, 0.33, 0.31, 0.28, 0.26, 0.25])
+fig_smile = go.Figure(data=[go.Scatter(x=strikes, y=implied_vols, mode='lines+markers', name='Implied Volatility')])
+fig_smile.update_layout(title="Volatility Smile", xaxis_title="Strike Price", yaxis_title="Implied Volatility")
+st.plotly_chart(fig_smile)
+
+# ---------------------------
+# 3D Volatility Surface
+# ---------------------------
+st.subheader("🔹 3D Volatility Surface")
+st.markdown("""
+The **3D Volatility Surface** shows implied volatility across strikes and expiration dates, providing insight into market expectations and skew.
+""")
+
+strikes_3d = np.linspace(80, 120, 10)
+maturities = np.linspace(30, 365, 10)
+X, Y = np.meshgrid(strikes_3d, maturities)
+Z = np.sin(X/10) * np.cos(Y/100) + 0.2  # Example surface
+
+fig_surface = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Viridis')])
+fig_surface.update_layout(title="3D Volatility Surface", scene=dict(
+xaxis_title='Strike Price',
+yaxis_title='Time to Expiration (Days)',
+zaxis_title='Implied Volatility'
+))
+st.plotly_chart(fig_surface)
+
+# ---------------------------
+# Vega Exposure
+# ---------------------------
+st.subheader("🔹 Vega Exposure")
+st.markdown("""
+**Vega** measures how the option price changes with a 1% change in implied volatility.  
+Long Vega benefits from rising volatility; short Vega benefits from falling volatility.
+""")
+
+# Option parameters
+S = st.number_input("Spot Price (S)", value=100.0, step=1.0)
+K = st.number_input("Strike Price (K)", value=100.0, step=1.0)
+T = st.number_input("Time to Expiry (years)", value=0.5, step=0.1)
+r = st.number_input("Risk-Free Rate (r)", value=0.02, step=0.01)
+option_type = st.selectbox("Option Type", ["call", "put"])
+sigma_base = st.number_input("Base Volatility (σ)", value=0.2, step=0.01)
+
+sigma_range = np.linspace(0.1, 0.5, 50)
+price_range = [bs_price(S, K, T, r, s, option_type) for s in sigma_range]
+
+fig_vega = go.Figure(data=[go.Scatter(x=sigma_range, y=price_range, mode='lines', name='Option Price')])
+fig_vega.update_layout(title="Option Price vs Implied Volatility", xaxis_title="Implied Volatility", yaxis_title="Option Price")
+st.plotly_chart(fig_vega)
+
+st.markdown("As shown, the option price rises with volatility, indicating **positive vega exposure**.")
