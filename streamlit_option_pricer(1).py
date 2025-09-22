@@ -2,8 +2,8 @@ import streamlit as st
 import numpy as np
 import yfinance as yf
 from scipy.stats import norm
-import plotly.graph_objects as go
 import matplotlib.pyplot as plt
+from scipy.optimize import brentq
 
 # --- Black-Scholes Functions ---
 def d1(S, K, T, r, sigma):
@@ -31,110 +31,92 @@ def greeks(S, K, T, r, sigma, option="call"):
 
     return delta, gamma, vega, theta, rho
 
+# --- PAGE: Option Pricer ---
+st.title("📊 Black-Scholes Option Pricer with Greeks Dashboard")
 
-# --- Sidebar Navigation ---
-page = st.sidebar.radio("Navigation", ["Option Pricer", "Theory", "Option Combinations Builder", "Greeks Hedging Strategy", "Volatility Strategies"])
+ticker = st.text_input("Enter Stock Ticker (Yahoo Finance)", "AAPL")
+data = yf.Ticker(ticker).history(period="1d")
+S = data["Close"].iloc[-1]
+st.write(f"Current {ticker} Price: **{S:.2f}**")
 
-# --- PAGE 1: Option Pricer ---
-if page == "Option Pricer":
-    st.title("📊 Black-Scholes Option Pricer with Greeks Dashboard")
+# --- Time, rates, vol ---
+T_days = st.number_input("Time to Expiry (days)", value=30)
+r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
+sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
+option_type = st.selectbox("Option Type", ["call", "put"])
 
-    ticker = st.text_input("Enter Stock Ticker (Yahoo Finance)", "AAPL")
-    data = yf.Ticker(ticker).history(period="1d")
-    S = data["Close"].iloc[-1]
-    st.write(f"Current {ticker} Price: **{S:.2f}**")
+# --- Strike price selection ---
+st.subheader("Strike Price Selection")
+strike_mode = st.radio(
+    "Choose Strike Price Mode",
+    ["ATM", "Deep ITM", "Deep OTM", "Custom"],
+    index=0
+)
 
-    # --- Time, rates, vol ---
-    T_days = st.number_input("Time to Expiry (days)", value=30)
-    r = st.number_input("Risk-free Rate (e.g., 0.05 = 5%)", value=0.05)
-    sigma = st.number_input("Volatility (e.g., 0.2 = 20%)", value=0.2)
-    option_type = st.selectbox("Option Type", ["call", "put"])
+if strike_mode == "ATM":
+    K = round(S, 2)
+elif strike_mode == "Deep ITM":
+    K = round(S * (0.7 if option_type == "call" else 1.3), 2)
+elif strike_mode == "Deep OTM":
+    K = round(S * (1.3 if option_type == "call" else 0.7), 2)
+else:
+    K = st.number_input("Custom Strike Price", value=round(S, 2))
 
-    # --- Strike price selection ---
-    st.subheader("Strike Price Selection")
-    
-    strike_mode = st.radio(
-        "Choose Strike Price Mode",
-        ["ATM", "Deep ITM", "Deep OTM", "Custom"],
-        index=0
-    )
-    
-    if strike_mode == "ATM":
-        K = round(S, 2)
-    
-    elif strike_mode == "Deep ITM":
-        if option_type == "call":
-            K = round(S * 0.7, 2)
-        else:
-            K = round(S * 1.3, 2)
-    
-    elif strike_mode == "Deep OTM":
-        if option_type == "call":
-            K = round(S * 1.3, 2)
-        else:
-            K = round(S * 0.7, 2)
-    
-    else:  # Custom
-        K = st.number_input("Custom Strike Price", value=round(S, 2))
-    
-    st.write(f"Selected Strike Price: **{K}**")
-    
-    T = T_days/365
+st.write(f"Selected Strike Price: **{K}**")
+T = T_days/365
 
-    price = bs_price(S, K, T, r, sigma, option=option_type)
-    delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
+price = bs_price(S, K, T, r, sigma, option=option_type)
+delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
 
-    st.subheader("💡 Option Price")
-    st.write(f"{option_type.capitalize()} Price: **{price:.2f}**")
+st.subheader("💡 Option Price")
+st.write(f"{option_type.capitalize()} Price: **{price:.2f}**")
 
-    # Greeks Dashboard
-    st.subheader("📊 Greeks Dashboard")
-    st.table({
-        "Delta": [round(delta, 4)],
-        "Gamma": [round(gamma, 4)],
-        "Vega": [round(vega, 4)],
-        "Theta": [round(theta, 4)],
-        "Rho": [round(rho, 4)]
-    })
+# Greeks Dashboard
+st.subheader("📊 Greeks Dashboard")
+st.table({
+    "Delta": [round(delta, 4)],
+    "Gamma": [round(gamma, 4)],
+    "Vega": [round(vega, 4)],
+    "Theta": [round(theta, 4)],
+    "Rho": [round(rho, 4)]
+})
 
-    # Greeks Graph
-    st.subheader("📈 Greeks Sensitivity Graphs")
-    greek_choices = st.multiselect(
-        "Choose Greeks to plot",
-        ["Delta", "Gamma", "Vega", "Theta", "Rho"],
-        default=["Delta"]
-    )
+# Greeks Graph
+st.subheader("📈 Greeks Sensitivity Graphs")
+greek_choices = st.multiselect(
+    "Choose Greeks to plot",
+    ["Delta", "Gamma", "Vega", "Theta", "Rho"],
+    default=["Delta"]
+)
 
-    S_range = np.linspace(S*0.7, S*1.3, 100)
-    greeks_dict = {"Delta": [], "Gamma": [], "Vega": [], "Theta": [], "Rho": []}
+S_range = np.linspace(S*0.7, S*1.3, 100)
+greeks_dict = {g: [] for g in ["Delta", "Gamma", "Vega", "Theta", "Rho"]}
 
-    for S_val in S_range:
-        d, g, v, t, r_ = greeks(S_val, K, T, r, sigma, option=option_type)
-        greeks_dict["Delta"].append(d)
-        greeks_dict["Gamma"].append(g)
-        greeks_dict["Vega"].append(v)
-        greeks_dict["Theta"].append(t)
-        greeks_dict["Rho"].append(r_)
+for S_val in S_range:
+    d, g, v, t, r_ = greeks(S_val, K, T, r, sigma, option=option_type)
+    greeks_dict["Delta"].append(d)
+    greeks_dict["Gamma"].append(g)
+    greeks_dict["Vega"].append(v)
+    greeks_dict["Theta"].append(t)
+    greeks_dict["Rho"].append(r_)
 
-    fig, ax = plt.subplots()
-    for g in greek_choices:
-        ax.plot(S_range, greeks_dict[g], label=g)
+fig, ax = plt.subplots()
+for g in greek_choices:
+    ax.plot(S_range, greeks_dict[g], label=g)
+ax.axvline(K, color="red", linestyle="--", label="Strike Price")
+ax.set_xlabel("Stock Price")
+ax.set_ylabel("Value")
+ax.legend()
+st.pyplot(fig)
 
-    ax.axvline(K, color="red", linestyle="--", label="Strike Price")
-    ax.set_xlabel("Stock Price")
-    ax.set_ylabel("Value")
-    ax.legend()
-    st.pyplot(fig)
-    
-    # Implied Volatility Calculator
-    st.subheader("📈 Implied Volatility Calculator")
-    market_price = st.number_input("Enter Market Option Price", min_value=0.0, step=0.1)
-    if market_price > 0:
-        def option_price_given_vol(vol):
-            return bs_price(S, K, T, r, vol, option_type) - market_price
-    
-        try:
-            implied_vol = brentq(option_price_given_vol, 1e-6, 5.0)
-            st.success(f"Implied Volatility: {implied_vol:.2%}")
-        except ValueError:
-            st.error("❌ Could not find implied volatility with given inputs.")
+# Implied Volatility Calculator
+st.subheader("📈 Implied Volatility Calculator")
+market_price = st.number_input("Enter Market Option Price", min_value=0.0, step=0.1)
+if market_price > 0:
+    def option_price_given_vol(vol):
+        return bs_price(S, K, T, r, vol, option_type) - market_price
+    try:
+        implied_vol = brentq(option_price_given_vol, 1e-6, 5.0)
+        st.success(f"Implied Volatility: {implied_vol:.2%}")
+    except ValueError:
+        st.error("❌ Could not find implied volatility with given inputs.")
