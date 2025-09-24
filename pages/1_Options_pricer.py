@@ -26,12 +26,35 @@ def enhanced_options_page():
         with col1:
             st.subheader("📈 Market Data")
             
-            # Ticker input with validation
-            ticker_col1, ticker_col2 = st.columns([3, 1])
-            with ticker_col1:
-                ticker = st.text_input("Stock Ticker", "AAPL", help="Enter any Yahoo Finance ticker symbol")
-            with ticker_col2:
-                refresh_data = st.button("🔄", help="Refresh data")
+            # Enhanced ticker input with company search
+            search_method = st.radio("Search Method", ["By Ticker", "By Company Name"], horizontal=True)
+            
+            if search_method == "By Company Name":
+                # Basic company name to ticker mapping (limited but useful for major companies)
+                popular_companies = {
+                    "Apple": "AAPL", "Microsoft": "MSFT", "Google": "GOOGL", "Amazon": "AMZN",
+                    "Tesla": "TSLA", "Meta": "META", "Netflix": "NFLX", "Nvidia": "NVDA",
+                    "JPMorgan": "JPM", "Berkshire": "BRK-B", "Johnson & Johnson": "JNJ",
+                    "Visa": "V", "Procter & Gamble": "PG", "Mastercard": "MA", "Disney": "DIS",
+                    "Coca Cola": "KO", "McDonald's": "MCD", "Nike": "NKE", "Intel": "INTC",
+                    "Walmart": "WMT", "Boeing": "BA", "IBM": "IBM", "Salesforce": "CRM"
+                }
+                
+                company_name = st.selectbox("Select Company", 
+                                          [""] + list(popular_companies.keys()),
+                                          help="Choose from popular companies")
+                
+                if company_name:
+                    ticker = popular_companies[company_name]
+                    st.success(f"Selected: {company_name} ({ticker})")
+                else:
+                    ticker = st.text_input("Or enter ticker directly:", "AAPL")
+            else:
+                ticker_col1, ticker_col2 = st.columns([3, 1])
+                with ticker_col1:
+                    ticker = st.text_input("Stock Ticker", "AAPL", help="Enter any Yahoo Finance ticker symbol")
+                with ticker_col2:
+                    refresh_data = st.button("🔄", help="Refresh data")
             
             # Fetch and display stock data with error handling
             try:
@@ -46,6 +69,62 @@ def enhanced_options_page():
                 S = data["Close"].iloc[-1]
                 prev_close = data["Close"].iloc[-2] if len(data) > 1 else S
                 change_pct = (S - prev_close) / prev_close * 100
+                
+                # Company Information Display
+                if info:
+                    company_name = info.get('longName', ticker)
+                    sector = info.get('sector', 'N/A')
+                    industry = info.get('industry', 'N/A')
+                    market_cap = info.get('marketCap', 0)
+                    
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #007bff; margin: 10px 0;">
+                    <h4 style="margin: 0; color: #007bff;">{company_name} ({ticker})</h4>
+                    <p style="margin: 5px 0;"><strong>Sector:</strong> {sector} | <strong>Industry:</strong> {industry}</p>
+                    {f'<p style="margin: 5px 0;"><strong>Market Cap:</strong> ${market_cap/1e9:.1f}B</p>' if market_cap > 0 else ''}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Add business summary if available (truncated)
+                    if 'longBusinessSummary' in info and info['longBusinessSummary']:
+                        summary = info['longBusinessSummary']
+                        if len(summary) > 200:
+                            summary = summary[:200] + "..."
+                        
+                        with st.expander("📋 Company Overview"):
+                            st.write(summary)
+                            
+                            # Additional company metrics
+                            metrics_data = []
+                            metric_fields = {
+                                'Employees': 'fullTimeEmployees',
+                                'Founded': 'industryDisruptors',
+                                'CEO': 'companyOfficers',
+                                'Revenue (TTM)': 'totalRevenue',
+                                'P/E Ratio': 'trailingPE',
+                                'Beta': 'beta'
+                            }
+                            
+                            for label, field in metric_fields.items():
+                                if field in info and info[field]:
+                                    value = info[field]
+                                    if field == 'totalRevenue' and value:
+                                        value = f"${value/1e9:.1f}B"
+                                    elif field == 'fullTimeEmployees' and value:
+                                        value = f"{value:,}"
+                                    elif field == 'trailingPE' and value:
+                                        value = f"{value:.1f}"
+                                    elif field == 'beta' and value:
+                                        value = f"{value:.2f}"
+                                    elif field == 'companyOfficers' and isinstance(value, list) and len(value) > 0:
+                                        value = value[0].get('name', 'N/A')
+                                    
+                                    if value != 'N/A' and value:
+                                        metrics_data.append({"Metric": label, "Value": value})
+                            
+                            if metrics_data:
+                                metrics_df = pd.DataFrame(metrics_data)
+                                st.dataframe(metrics_df, use_container_width=True, hide_index=True)
                 
                 # Enhanced price display
                 price_col1, price_col2, price_col3 = st.columns(3)
