@@ -366,32 +366,84 @@ if st.session_state.portfolio:
     This is the trade-off between simple Delta hedge and more advanced Gamma hedging.
     """)
 
-
-    # Gamma hedge
+# -----------------------------------------------------------------------------
+# Gamma hedge section
+# -----------------------------------------------------------------------------
+    
     st.markdown("### 2) Gamma Hedge")
-    candidate_under = st.selectbox("Candidate option underlying", options=list(under_spots.keys()))
+    
+    st.markdown("""
+    Unlike Delta (which is hedged uniquely with stock), Gamma can be hedged in multiple ways:  
+    - **ATM short-dated options**: strong gamma hedge but heavy theta decay.  
+    - **OTM options**: less gamma efficiency but cheaper, lower theta.  
+    - **Longer-dated ATM**: smoother gamma hedge, adds vega exposure.  
+    """)
+    
+    # --- Preset choices for candidate hedge ---
+    preset_choice = st.radio(
+        "Choose Gamma hedge preset:",
+        [
+            "Recommended: ATM, short expiry",
+            "Lower Theta cost: OTM, medium expiry",
+            "Vega-sensitive: ATM, longer expiry",
+            "Custom"
+        ],
+        index=0
+    )
+    
+    candidate_under = list(under_spots.keys())[0]
     cand_spot = under_spots[candidate_under]
-    cand_strike_mode = st.selectbox("Candidate strike", ["ATM", "OTM (1.05x)", "ITM (0.95x)", "Custom"])
-    if cand_strike_mode == "ATM":
+    
+    if preset_choice == "Recommended: ATM, short expiry":
         cand_strike = round(cand_spot, 2)
-    elif cand_strike_mode == "OTM (1.05x)":
-        cand_strike = round(cand_spot*1.05, 2)
-    elif cand_strike_mode == "ITM (0.95x)":
-        cand_strike = round(cand_spot*0.95, 2)
+        cand_days = 15
+        cand_vol = 0.25
+        cand_type = "call"
+        st.info("Preset: Strongest gamma hedge, but high theta cost (fast time decay).")
+    
+    elif preset_choice == "Lower Theta cost: OTM, medium expiry":
+        cand_strike = round(cand_spot * 1.05, 2)
+        cand_days = 45
+        cand_vol = 0.22
+        cand_type = "call"
+        st.info("Preset: Lower theta bleed, but less gamma per contract → requires more contracts.")
+    
+    elif preset_choice == "Vega-sensitive: ATM, longer expiry":
+        cand_strike = round(cand_spot, 2)
+        cand_days = 90
+        cand_vol = 0.30
+        cand_type = "put"
+        st.info("Preset: Smooth gamma hedge, adds vega exposure (sensitive to vol changes).")
+    
     else:
         cand_strike = st.number_input("Custom strike", value=round(cand_spot, 2))
-    cand_days = st.number_input("Candidate days to expiry", min_value=1, value=30)
-    cand_vol = st.number_input("Candidate vol", min_value=0.01, value=0.2)
-    cand_type = st.selectbox("Candidate type", ["call", "put"])
-
+        cand_days = st.number_input("Custom days to expiry", min_value=1, value=30)
+        cand_vol = st.number_input("Custom implied vol", min_value=0.01, value=0.2)
+        cand_type = st.selectbox("Custom option type", ["call", "put"])
+    
+    # --- Gamma hedge calculation ---
     T_c = days_to_T(cand_days)
-    _, g_c, *_ = greeks(cand_spot, cand_strike, T_c, r, cand_vol, cand_type)
+    _, g_c, v_c, t_c, _ = greeks(cand_spot, cand_strike, T_c, r, cand_vol, cand_type)
     gamma_per_contract = g_c * 100
+    vega_per_contract = v_c * 100
+    theta_per_contract = t_c * 100
+    
     if gamma_per_contract != 0:
         qty_needed = -total_gamma / gamma_per_contract
-        st.success(f"Approx. {qty_needed:.2f} contracts needed to neutralize gamma.")
+        st.success(f"Approx. {qty_needed:.2f} {cand_type.upper()} contracts needed at strike {cand_strike}, expiry {cand_days}d.")
     else:
         st.warning("Candidate has near-zero gamma — pick another strike/expiry.")
+    
+    # --- Display trade-off summary ---
+    st.markdown("#### Trade-off impact (per contract)")
+    tradeoff_df = pd.DataFrame([{
+        "Gamma": gamma_per_contract,
+        "Theta": theta_per_contract,
+        "Vega": vega_per_contract
+    }])
+    st.table(tradeoff_df.style.format("{:.3f}"))
+    
+
 
     # -----------------------------------------------------------------------------
     # Payoff visualization
