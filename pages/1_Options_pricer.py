@@ -439,115 +439,132 @@ def enhanced_options_page():
             st.markdown(f"**Profit Range:** ${profit_range:.2f}")
     
     # === OPTION STRATEGY VALUATION & GREEKS ===
-    def calculate_strategy_price_and_greeks(S, strikes, T, r, sigma, option_type):
+    def calculate_strategy_price_and_greeks(S_price, strike_list, time_exp, risk_rate, vol, strategy_type):
         """Calculate price and Greeks for various option strategies"""
         
-        if option_type == "call":
-            price = bs_price(S, strikes[0], T, r, sigma, "call")
-            delta, gamma, vega, theta, rho = greeks(S, strikes[0], T, r, sigma, "call")
+        if strategy_type == "call":
+            price_val = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            delta_val, gamma_val, vega_val, theta_val, rho_val = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
             
-        elif option_type == "put":
-            price = bs_price(S, strikes[0], T, r, sigma, "put")
-            delta, gamma, vega, theta, rho = greeks(S, strikes[0], T, r, sigma, "put")
+        elif strategy_type == "put":
+            price_val = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
+            delta_val, gamma_val, vega_val, theta_val, rho_val = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
             
-        elif option_type == "straddle":
+        elif strategy_type == "straddle":
             # Long call + Long put at same strike
-            call_price = bs_price(S, strikes[0], T, r, sigma, "call")
-            put_price = bs_price(S, strikes[0], T, r, sigma, "put")
-            price = call_price + put_price
+            call_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            put_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
+            price_val = call_price + put_price
             
-            call_greeks = greeks(S, strikes[0], T, r, sigma, "call")
-            put_greeks = greeks(S, strikes[0], T, r, sigma, "put")
+            call_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            put_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
             
-            delta = call_greeks[0] + put_greeks[0]
-            gamma = call_greeks[1] + put_greeks[1]
-            vega = call_greeks[2] + put_greeks[2]
-            theta = call_greeks[3] + put_greeks[3]
-            rho = call_greeks[4] + put_greeks[4]
+            delta_val = call_greeks[0] + put_greeks[0]
+            gamma_val = call_greeks[1] + put_greeks[1]
+            vega_val = call_greeks[2] + put_greeks[2]
+            theta_val = call_greeks[3] + put_greeks[3]
+            rho_val = call_greeks[4] + put_greeks[4]
             
-        elif option_type == "strangle":
+        elif strategy_type == "strangle":
             # Long put (lower strike) + Long call (higher strike)
-            put_price = bs_price(S, strikes[0], T, r, sigma, "put")
-            call_price = bs_price(S, strikes[1], T, r, sigma, "call")
-            price = put_price + call_price
+            put_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
+            call_price = bs_price(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
+            price_val = put_price + call_price
             
-            put_greeks = greeks(S, strikes[0], T, r, sigma, "put")
-            call_greeks = greeks(S, strikes[1], T, r, sigma, "call")
+            put_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
+            call_greeks = greeks(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
             
-            delta = put_greeks[0] + call_greeks[0]
-            gamma = put_greeks[1] + call_greeks[1]
-            vega = put_greeks[2] + call_greeks[2]
-            theta = put_greeks[3] + call_greeks[3]
-            rho = put_greeks[4] + call_greeks[4]
+            delta_val = put_greeks[0] + call_greeks[0]
+            gamma_val = put_greeks[1] + call_greeks[1]
+            vega_val = put_greeks[2] + call_greeks[2]
+            theta_val = put_greeks[3] + call_greeks[3]
+            rho_val = put_greeks[4] + call_greeks[4]
             
-        elif option_type == "bull_call_spread":
+        elif strategy_type == "bull_call_spread":
             # Long call (lower strike) - Short call (higher strike)
-            long_call_price = bs_price(S, strikes[0], T, r, sigma, "call")
-            short_call_price = bs_price(S, strikes[1], T, r, sigma, "call")
-            price = long_call_price - short_call_price
+            long_call_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            short_call_price = bs_price(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
+            price_val = long_call_price - short_call_price
             
-            long_greeks = greeks(S, strikes[0], T, r, sigma, "call")
-            short_greeks = greeks(S, strikes[1], T, r, sigma, "call")
+            long_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            short_greeks = greeks(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
             
-            delta = long_greeks[0] - short_greeks[0]
-            gamma = long_greeks[1] - short_greeks[1]
-            vega = long_greeks[2] - short_greeks[2]
-            theta = long_greeks[3] - short_greeks[3]
-            rho = long_greeks[4] - short_greeks[4]
+            delta_val = long_greeks[0] - short_greeks[0]
+            gamma_val = long_greeks[1] - short_greeks[1]
+            vega_val = long_greeks[2] - short_greeks[2]
+            theta_val = long_greeks[3] - short_greeks[3]
+            rho_val = long_greeks[4] - short_greeks[4]
             
-        elif option_type == "bear_put_spread":
+        elif strategy_type == "bear_put_spread":
             # Long put (higher strike) - Short put (lower strike)
-            long_put_price = bs_price(S, strikes[1], T, r, sigma, "put")
-            short_put_price = bs_price(S, strikes[0], T, r, sigma, "put")
-            price = long_put_price - short_put_price
+            long_put_price = bs_price(S_price, strike_list[1], time_exp, risk_rate, vol, "put")
+            short_put_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
+            price_val = long_put_price - short_put_price
             
-            long_greeks = greeks(S, strikes[1], T, r, sigma, "put")
-            short_greeks = greeks(S, strikes[0], T, r, sigma, "put")
+            long_greeks = greeks(S_price, strike_list[1], time_exp, risk_rate, vol, "put")
+            short_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "put")
             
-            delta = long_greeks[0] - short_greeks[0]
-            gamma = long_greeks[1] - short_greeks[1]
-            vega = long_greeks[2] - short_greeks[2]
-            theta = long_greeks[3] - short_greeks[3]
-            rho = long_greeks[4] - short_greeks[4]
+            delta_val = long_greeks[0] - short_greeks[0]
+            gamma_val = long_greeks[1] - short_greeks[1]
+            vega_val = long_greeks[2] - short_greeks[2]
+            theta_val = long_greeks[3] - short_greeks[3]
+            rho_val = long_greeks[4] - short_greeks[4]
             
-        elif option_type == "butterfly":
+        elif strategy_type == "butterfly":
             # Long call (lower) + Long call (upper) - 2 * Short call (middle)
-            lower_call_price = bs_price(S, strikes[0], T, r, sigma, "call")
-            middle_call_price = bs_price(S, strikes[1], T, r, sigma, "call")
-            upper_call_price = bs_price(S, strikes[2], T, r, sigma, "call")
-            price = lower_call_price + upper_call_price - 2 * middle_call_price
+            lower_call_price = bs_price(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            middle_call_price = bs_price(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
+            upper_call_price = bs_price(S_price, strike_list[2], time_exp, risk_rate, vol, "call")
+            price_val = lower_call_price + upper_call_price - 2 * middle_call_price
             
-            lower_greeks = greeks(S, strikes[0], T, r, sigma, "call")
-            middle_greeks = greeks(S, strikes[1], T, r, sigma, "call")
-            upper_greeks = greeks(S, strikes[2], T, r, sigma, "call")
+            lower_greeks = greeks(S_price, strike_list[0], time_exp, risk_rate, vol, "call")
+            middle_greeks = greeks(S_price, strike_list[1], time_exp, risk_rate, vol, "call")
+            upper_greeks = greeks(S_price, strike_list[2], time_exp, risk_rate, vol, "call")
             
-            delta = lower_greeks[0] + upper_greeks[0] - 2 * middle_greeks[0]
-            gamma = lower_greeks[1] + upper_greeks[1] - 2 * middle_greeks[1]
-            vega = lower_greeks[2] + upper_greeks[2] - 2 * middle_greeks[2]
-            theta = lower_greeks[3] + upper_greeks[3] - 2 * middle_greeks[3]
-            rho = lower_greeks[4] + upper_greeks[4] - 2 * middle_greeks[4]
+            delta_val = lower_greeks[0] + upper_greeks[0] - 2 * middle_greeks[0]
+            gamma_val = lower_greeks[1] + upper_greeks[1] - 2 * middle_greeks[1]
+            vega_val = lower_greeks[2] + upper_greeks[2] - 2 * middle_greeks[2]
+            theta_val = lower_greeks[3] + upper_greeks[3] - 2 * middle_greeks[3]
+            rho_val = lower_greeks[4] + upper_greeks[4] - 2 * middle_greeks[4]
             
-        elif option_type == "iron_condor":
+        elif strategy_type == "iron_condor":
             # Short put spread + Short call spread
-            # -Put(K1) +Put(K2) -Call(K3) +Call(K4)
-            put1_price = bs_price(S, K1, T, r, sigma, "put")
-            put2_price = bs_price(S, K2, T, r, sigma, "put") 
-            call3_price = bs_price(S, K3, T, r, sigma, "call")
-            call4_price = bs_price(S, K4, T, r, sigma, "call")
-            price = -put1_price + put2_price - call3_price + call4_price
+            # Get the strikes from the global variables
+            try:
+                K1_val = K1
+                K2_val = K2  
+                K3_val = K3
+                K4_val = K4
+            except:
+                # Fallback if variables not defined
+                K1_val = strike_list[0] 
+                K2_val = strike_list[1] if len(strike_list) > 1 else strike_list[0] * 1.05
+                K3_val = strike_list[2] if len(strike_list) > 2 else strike_list[0] * 1.10
+                K4_val = strike_list[3] if len(strike_list) > 3 else strike_list[0] * 1.15
+                
+            put1_price = bs_price(S_price, K1_val, time_exp, risk_rate, vol, "put")
+            put2_price = bs_price(S_price, K2_val, time_exp, risk_rate, vol, "put") 
+            call3_price = bs_price(S_price, K3_val, time_exp, risk_rate, vol, "call")
+            call4_price = bs_price(S_price, K4_val, time_exp, risk_rate, vol, "call")
+            price_val = -put1_price + put2_price - call3_price + call4_price
             
-            put1_greeks = greeks(S, K1, T, r, sigma, "put")
-            put2_greeks = greeks(S, K2, T, r, sigma, "put")
-            call3_greeks = greeks(S, K3, T, r, sigma, "call")
-            call4_greeks = greeks(S, K4, T, r, sigma, "call")
+            put1_greeks = greeks(S_price, K1_val, time_exp, risk_rate, vol, "put")
+            put2_greeks = greeks(S_price, K2_val, time_exp, risk_rate, vol, "put")
+            call3_greeks = greeks(S_price, K3_val, time_exp, risk_rate, vol, "call")
+            call4_greeks = greeks(S_price, K4_val, time_exp, risk_rate, vol, "call")
             
-            delta = -put1_greeks[0] + put2_greeks[0] - call3_greeks[0] + call4_greeks[0]
-            gamma = -put1_greeks[1] + put2_greeks[1] - call3_greeks[1] + call4_greeks[1]
-            vega = -put1_greeks[2] + put2_greeks[2] - call3_greeks[2] + call4_greeks[2]
-            theta = -put1_greeks[3] + put2_greeks[3] - call3_greeks[3] + call4_greeks[3]
-            rho = -put1_greeks[4] + put2_greeks[4] - call3_greeks[4] + call4_greeks[4]
+            delta_val = -put1_greeks[0] + put2_greeks[0] - call3_greeks[0] + call4_greeks[0]
+            gamma_val = -put1_greeks[1] + put2_greeks[1] - call3_greeks[1] + call4_greeks[1]
+            vega_val = -put1_greeks[2] + put2_greeks[2] - call3_greeks[2] + call4_greeks[2]
+            theta_val = -put1_greeks[3] + put2_greeks[3] - call3_greeks[3] + call4_greeks[3]
+            rho_val = -put1_greeks[4] + put2_greeks[4] - call3_greeks[4] + call4_greeks[4]
         
-        return price, delta, gamma, vega, theta, rho
+        else:
+            # Default fallback
+            price_val = 0
+            delta_val = gamma_val = vega_val = theta_val = rho_val = 0
+        
+        return price_val, delta_val, gamma_val, vega_val, theta_val, rho_val
     
     try:
         # Prepare strikes array based on strategy
@@ -559,6 +576,8 @@ def enhanced_options_page():
             strikes = [K, K2, K3]
         elif option_type == "iron_condor":
             strikes = [K1, K2, K3, K4]
+        else:
+            strikes = [K]
         
         price, delta, gamma, vega, theta, rho = calculate_strategy_price_and_greeks(
             S, strikes, T, r, sigma, option_type
