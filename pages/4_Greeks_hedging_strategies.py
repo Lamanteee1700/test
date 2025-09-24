@@ -345,7 +345,7 @@ if st.session_state.portfolio:
             payoff_nohedge += option_payoff_vector(S_plot, inst["strike"], inst["option_type"], inst["qty"])
     
     # Payoff with delta hedge
-    payoff_hedged = payoff_nohedge - hedge_shares * (S_plot - main_spot)
+    payoff_hedged = payoff_nohedge + hedge_shares * (S_plot - main_spot)
     
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(S_plot, payoff_nohedge, label="Before hedge", color="red", lw=2)
