@@ -718,9 +718,7 @@ def enhanced_options_page():
         st.info(f"**Directional Spread:** Limited risk/reward. Width: ${abs(K2-K):.2f}")
     elif option_type == "iron_condor":
         st.info(f"**Range Strategy:** Profits when price stays between ${K2:.0f} and ${K3:.0f}")
-    elif option_type == "butterfly":
-        st.info(f"**Pin Risk Strategy:** Maximum profit when price exactly at ${K2:.2f} at expiration")"${time_value:.3f}",
-                 help="Premium above intrinsic value")
+
     
     with metric_cols[3]:
         leverage = (delta * S) / price if price > 0.001 else 0
