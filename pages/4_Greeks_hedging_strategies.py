@@ -307,10 +307,65 @@ if st.session_state.portfolio:
         "Rho": total_rho
     }]).T.rename(columns={0:"Value"}).style.format("{:.3f}"))
 
-    # Delta hedge
+# -----------------------------------------------------------------------------
+# Delta hedge section
+# -----------------------------------------------------------------------------
+
     st.markdown("### 1) Delta Hedge")
+    
+    st.markdown("""
+    **Idea**:  
+    - The **Delta** of a portfolio measures how much its value changes when the underlying moves.  
+    - If total Delta ≠ 0, the portfolio has **directional exposure**: it gains/loses as the stock moves.  
+    - A **Delta hedge** consists of trading the underlying stock to make total Delta ≈ 0,  
+      so the portfolio is (locally) immune to small price moves.
+    
+    **Rule of thumb**:  
+    - If portfolio Delta > 0 → you're effectively long stock → you **sell shares** to neutralize.  
+    - If portfolio Delta < 0 → you're effectively short stock → you **buy shares** to neutralize.  
+    """)
+    
     hedge_shares = -total_delta
     st.info(f"To neutralize delta today, trade **{hedge_shares:.2f} shares** of the underlying (negative = sell).")
+    
+    # --- Visualization of delta hedge effect ---
+    st.markdown("#### Visualizing the effect of delta hedge")
+    
+    main_under = list(under_spots.keys())[0]
+    main_spot = under_spots[main_under]
+    S_plot = np.linspace(main_spot * (1 - base_range_pct/100), main_spot * (1 + base_range_pct/100), 200)
+    
+    # Payoff without hedge
+    payoff_nohedge = np.zeros_like(S_plot)
+    for inst in st.session_state.portfolio:
+        if inst["type"] == "stock":
+            S0 = inst["spot"]
+            payoff_nohedge += inst["qty"] * (S_plot - S0)
+        else:
+            payoff_nohedge += option_payoff_vector(S_plot, inst["strike"], inst["option_type"], inst["qty"])
+    
+    # Payoff with delta hedge
+    payoff_hedged = payoff_nohedge - hedge_shares * (S_plot - main_spot)
+    
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(S_plot, payoff_nohedge, label="Before hedge", color="red", lw=2)
+    ax.plot(S_plot, payoff_hedged, label="After delta hedge", color="green", lw=2)
+    ax.axvline(main_spot, color="blue", ls="--", alpha=0.6, label=f"Spot {main_under}={main_spot:.2f}")
+    ax.axhline(0, color="k", ls=":")
+    ax.set_xlabel(f"{main_under} Price at expiry")
+    ax.set_ylabel("P&L ($)")
+    ax.set_title("Effect of Delta Hedge: Flattening local slope")
+    ax.legend()
+    st.pyplot(fig)
+    
+    st.markdown("""
+    🔍 **Interpretation**:  
+    - The red line (before hedge) has a **steep slope**: the portfolio gains/loses immediately as price changes.  
+    - The green line (after hedge) is **flatter around spot**: small moves in the underlying now have little effect.  
+    - But! As price moves further, Delta itself drifts (due to Gamma) → you may need to **rebalance**.  
+    This is the trade-off between simple Delta hedge and more advanced Gamma hedging.
+    """)
+
 
     # Gamma hedge
     st.markdown("### 2) Gamma Hedge")
