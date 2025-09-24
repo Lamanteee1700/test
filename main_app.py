@@ -9,7 +9,8 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from utils import bs_price, greeks, d1, d2
 import feedparser
-import requests    
+import requests
+import random
 
 # --- Page Configuration ---
 st.set_page_config(
