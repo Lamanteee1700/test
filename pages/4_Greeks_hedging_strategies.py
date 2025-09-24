@@ -150,33 +150,59 @@ else:
 # Portfolio display
 # -----------------------------------------------------------------------------
 st.subheader("Portfolio composition")
+
 if not st.session_state.portfolio:
     st.info("Portfolio is empty — add stocks or options from the sidebar or select a preset.")
 else:
-    df_rows = []
-    for i, inst in enumerate(st.session_state.portfolio):
+    # Build clean summary rows
+    rows = []
+    for inst in st.session_state.portfolio:
         if inst["type"] == "stock":
-            df_rows.append({
-                "id": i,
-                "type": "stock",
-                "ticker": inst["ticker"],
-                "qty": inst["qty"],
-                "spot": inst.get("spot", None)
+            rows.append({
+                "Instrument": f"Stock {inst['ticker']}",
+                "Qty (shares)": inst["qty"],
+                "Spot": round(inst.get("spot", 0), 2)
             })
         else:
-            df_rows.append({
-                "id": i,
-                "type": "option",
-                "underlying": inst["underlying"],
-                "opt_type": inst["option_type"],
-                "strike": inst["strike"],
-                "days": inst["days"],
-                "qty_contracts": inst["qty"],
-                "vol": inst["vol"],
-                "spot": inst.get("spot", None)
+            rows.append({
+                "Instrument": f"{inst['option_type'].capitalize()} {inst['underlying']} (K={inst['strike']}, {inst['days']}d)",
+                "Qty (contracts)": inst["qty"],
+                "Vol": inst["vol"],
+                "Spot": round(inst.get("spot", 0), 2)
             })
-    st.table(pd.DataFrame(df_rows).astype(str))
 
+    st.dataframe(pd.DataFrame(rows))
+
+    # --- Quick payoff snapshot at expiry ---
+    st.markdown("### Quick payoff snapshot (expiry approximation)")
+
+    # Choose the first underlying as reference
+    under = None
+    for inst in st.session_state.portfolio:
+        under = inst["ticker"] if inst["type"] == "stock" else inst["underlying"]
+        break
+
+    spot = fetch_spot(under)
+    S_range = np.linspace(spot * 0.7, spot * 1.3, 200)
+    payoff = np.zeros_like(S_range)
+
+    for inst in st.session_state.portfolio:
+        if inst["type"] == "stock":
+            S0 = inst["spot"]
+            payoff += inst["qty"] * (S_range - S0)
+        else:
+            payoff += option_payoff_vector(S_range, inst["strike"], inst["option_type"], inst["qty"])
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(S_range, payoff, lw=2, color="darkgreen")
+    ax.axvline(spot, color="blue", ls="--", alpha=0.6, label=f"Spot {under}={spot:.2f}")
+    ax.axhline(0, color="k", ls=":")
+    ax.set_xlabel(f"{under} Price at expiry")
+    ax.set_ylabel("P&L ($)")
+    ax.set_title("Portfolio Payoff Snapshot (Expiry)")
+    ax.legend()
+    st.pyplot(fig)
+    
 # -----------------------------------------------------------------------------
 # Pedagogical explanations for presets
 # -----------------------------------------------------------------------------
