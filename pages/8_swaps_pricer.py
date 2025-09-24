@@ -73,10 +73,11 @@ def fair_swap_rate(notional, spot_rates, times, payment_freq=0.5):
 # --- Streamlit App ---
 def show_swaps_page():
     st.title("💰 Interest Rate Swaps Pricer & Visualizer")
-    
+
     st.markdown("""
-    **Interest Rate Swaps (IRS)** allow parties to exchange fixed-rate payments for floating-rate payments.
-    This tool helps you understand swap pricing, valuation, and risk sensitivity.
+    This tool calculates the value of an **interest rate swap (IRS)**, which exchanges fixed-rate payments for floating-rate payments.  
+    It shows the **present value of each leg**, the **net value (NPV)**, and the **fair fixed rate** that makes the swap initially neutral.  
+    You can also visualize the **yield curve**, **cash flow profile**, and explore **how rate changes impact swap value**.
     """)
     
     # --- Input Parameters ---
@@ -116,6 +117,7 @@ def show_swaps_page():
     
     # --- Results Dashboard ---
     st.subheader("Swap Valuation Results")
+    st.markdown("See the **PV of each leg**, the **net value of the swap**, and the **fair fixed rate**.")
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Fixed Leg PV", f"${fixed_pv:,.0f}")
@@ -126,6 +128,7 @@ def show_swaps_page():
     
     # --- Yield Curve Visualization ---
     st.subheader("📈 Yield Curve")
+    st.markdown("Visualize the spot rate curve and compare **fair vs fixed rate**.")
     
     fig_curve = go.Figure()
     fig_curve.add_trace(go.Scatter(
