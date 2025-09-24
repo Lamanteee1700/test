@@ -20,7 +20,9 @@ page = st.sidebar.radio(
     ["🎯 Options Pricer", "💰 Swaps Pricer", "🏗️ Structured Products", "📚 About"]
 )
 
- option=option_type)
+    try:
+        price = bs_price(S, K, T, r, sigma, option=option_type)
+        delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
     except Exception as e:
         st.error(f"❌ Calculation error: {str(e)}")
         return
