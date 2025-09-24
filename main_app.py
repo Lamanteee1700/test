@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 from utils import bs_price, greeks, d1, d2
-import feedparser  # Added for RSS news parsing
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -32,7 +31,7 @@ def main():
     # Dashboard Overview
     st.subheader("🚀 Platform Features")
     
-    # Feature cards
+    # Create feature cards
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -80,8 +79,10 @@ def main():
     # Quick Market Overview
     st.subheader("📈 Market Snapshot")
     
+    # Fetch some market data for context
     try:
-        tickers = ["^GSPC", "^VIX", "^TNX"]
+        # Get major indices
+        tickers = ["^GSPC", "^VIX", "^TNX"]  # S&P 500, VIX, 10Y Treasury
         ticker_names = ["S&P 500", "VIX", "10Y Treasury"]
         
         market_data = []
@@ -101,14 +102,18 @@ def main():
                 continue
         
         if market_data:
+            market_df = pd.DataFrame(market_data)
+            
+            # Display market data
             mcol1, mcol2, mcol3 = st.columns(3)
+            
             for i, (col, row) in enumerate(zip([mcol1, mcol2, mcol3], market_data)):
                 with col:
-                    if i == 0:
+                    if i == 0:  # S&P 500
                         col.metric(row["Index"], f"{row['Value']:.0f}", f"{row['Change %']:+.2f}%")
-                    elif i == 1:
+                    elif i == 1:  # VIX
                         col.metric(row["Index"], f"{row['Value']:.1f}", f"{row['Change %']:+.2f}%")
-                    else:
+                    else:  # 10Y Treasury
                         col.metric(row["Index"], f"{row['Value']:.2f}%", f"{row['Change %']:+.2f}%")
         
     except Exception as e:
@@ -120,51 +125,67 @@ def main():
     st.markdown("""
     **Use the sidebar navigation to explore different tools:**
     
-    - **📊 1_Options_pricer** - Advanced options pricing with company search and analytics
-    - **📖 2_Theory** - Black-Scholes theory and foundations  
-    - **📐 3_Options_combinations** - Build and analyze option strategies
-    - **🧮 4_Greeks_hedging_strategies** - Delta and gamma hedging demos
-    - **📈 5_volatility_strategies** - VIX analysis and volatility surfaces
-    - **💰 8_swaps_pricer** - Interest rate swap pricing & risk analysis
-    - **🏗️ 9_Structured_products_builder** - Build structured derivative products
+    - **📊 1_Options_pricer** - Advanced options pricing with company search and comprehensive analytics
+    - **📖 2_Theory** - Black-Scholes theory, assumptions, and mathematical foundations  
+    - **📐 3_Options_combinations** - Build and analyze option strategies (straddles, spreads, etc.)
+    - **🧮 4_Greeks_hedging_strategies** - Delta and gamma hedging demonstrations
+    - **📈 5_volatility_strategies** - VIX analysis and volatility surface exploration
+    - **💰 8_swaps_pricer** - Interest rate swap pricing and risk analysis
+    - **🏗️ 9_Structured_products_builder** - Build complex structured derivative products
     
-    Each page provides interactive tools with educational explanations to understand derivative pricing and risk.
+    Each page provides interactive tools with educational explanations to help you understand derivative pricing and risk management.
     """)
     
     # Educational Resources
     with st.expander("📚 Educational Resources & Key Concepts"):
         st.markdown("""
         ### Core Financial Derivatives Concepts
+        
         **Options Fundamentals:**
-        - Call / Put, Greeks, Implied Volatility  
+        - **Call Options**: Right to buy at strike price - profit when price rises
+        - **Put Options**: Right to sell at strike price - profit when price falls  
+        - **Greeks**: Risk sensitivities (Delta, Gamma, Vega, Theta, Rho)
+        - **Implied Volatility**: Market's expectation of future price movements
+        
         **Interest Rate Swaps:**
-        - Fixed vs Floating, Fair Swap Rate, Duration & Curve Risk  
+        - **Fixed vs Floating**: Exchange fixed-rate payments for floating-rate payments
+        - **Fair Swap Rate**: Rate that makes both legs equal in value at inception
+        - **Duration Risk**: Sensitivity to parallel shifts in yield curves
+        - **Curve Risk**: Sensitivity to changes in yield curve shape
+        
         **Structured Products:**
-        - Capital Protection, Enhanced Yield, Path Dependency, Barrier Features  
+        - **Capital Protection**: Guaranteed return of principal (or percentage)
+        - **Enhanced Yield**: Higher coupons in exchange for conditional risks
+        - **Path Dependency**: Payoffs depend on price evolution, not just final value
+        - **Barrier Features**: Knock-in/knock-out conditions that activate/deactivate payoffs
+        
         ### Risk Management Applications
-        - Hedging, Speculation, Asset-Liability Matching, Yield Enhancement
+        - **Hedging**: Reduce unwanted risk exposures
+        - **Speculation**: Express market views with defined risk/reward profiles
+        - **Asset-Liability Matching**: Align investment characteristics with obligations
+        - **Yield Enhancement**: Generate additional income through option strategies
         """)
     
     # Technical Notes
     with st.expander("⚙️ Technical Implementation Notes"):
         st.markdown("""
-        **Models & Methods:** Black-Scholes-Merton, Monte Carlo, PV Methods, Numerical Methods  
-        **Data Sources:** Yahoo Finance, Synthetic Curves, Historical Volatility  
-        **Limitations:** Educational tool, simplified models, no trading advice
+        **Models & Methods:**
+        - **Black-Scholes-Merton**: European option pricing with analytical Greeks
+        - **Monte Carlo Simulation**: Path-dependent and barrier option pricing  
+        - **Present Value Methods**: Bond and swap valuation using yield curves
+        - **Numerical Methods**: Finite difference methods for complex derivatives
+        
+        **Data Sources:**
+        - **Yahoo Finance API**: Real-time equity prices and market data
+        - **Synthetic Curves**: Modeled yield curves for educational purposes
+        - **Historical Volatility**: Calculated from price return series
+        
+        **Limitations & Assumptions:**
+        - Educational tool - not for actual trading decisions
+        - Simplified models may not capture all market complexities
+        - Real-world factors: bid-ask spreads, liquidity, early exercise features
+        - Regulatory and tax considerations not included
         """)
-    
-    # --- Japanese Market News Section ---
-    st.subheader("📰 Japanese Market News")
-    st.markdown("Stay up-to-date with top financial and market headlines in Japan:")
-    
-    rss_url = "https://news.yahoo.co.jp/rss/topics/business.xml"
-    try:
-        feed = feedparser.parse(rss_url)
-        news_items = feed.entries[:5]  # Top 5 articles
-        for entry in news_items:
-            st.markdown(f"- [{entry.title}]({entry.link}) ({entry.published})")
-    except Exception as e:
-        st.info("Japanese market news temporarily unavailable.")
     
     # Footer
     st.markdown("---")
