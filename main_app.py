@@ -192,16 +192,6 @@ def main():
         - Regulatory and tax considerations not included
         """)
     
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #666; font-size: 14px;">
-    <strong>Financial Derivatives Dashboard</strong><br>
-    Educational platform for options, swaps, and structured products analysis<br>
-    Built with Streamlit, NumPy, SciPy, Plotly & Yahoo Finance
-    </div>
-    """, unsafe_allow_html=True)
-    
     # --- Japanese Market News Section (Mistral AI Summarized) ---
     
     MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
@@ -251,7 +241,6 @@ def main():
         )
     
         try:
-            from mistral import Mistral
             client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
             chat_response = client.chat.complete(
                 model="mistral-small-latest",
@@ -282,6 +271,16 @@ def main():
         st.markdown(ai_summary)
     else:
         st.info("No news available at the moment.")
+
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; color: #666; font-size: 14px;">
+    <strong>Financial Derivatives Dashboard</strong><br>
+    Educational platform for options, swaps, and structured products analysis<br>
+    Built with Streamlit, NumPy, SciPy, Plotly & Yahoo Finance
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
