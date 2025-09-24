@@ -206,26 +206,52 @@ def main():
     
     MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
     
-    # Configuration
-    JAPANESE_FINANCIAL_RSS_FEEDS = [
-        "https://news.yahoo.co.jp/rss/topics/business.xml",      # Yahoo Japan Finance
-        "https://asia.nikkei.com/rss",                         # Nikkei Asian Review
-        "https://www.japantimes.co.jp/feed/business/",         # Japan Times Business
-        "https://jp.reuters.com/tools/rss",                   # Reuters Japan
-    ]
+    # --- Configuration: Japanese Financial RSS Feeds (Yahoo Japan Media) ---
+    JAPANESE_FINANCIAL_RSS_FEEDS = {
+        "Forbes Japan": "https://news.yahoo.co.jp/rss/media/forbes/all.xml",
+        "Diamond Online": "https://news.yahoo.co.jp/rss/media/dzai/all.xml",
+        "Teikoku Databank": "https://news.yahoo.co.jp/rss/media/teikokudb/all.xml",
+        "Yahoo Business": "https://news.yahoo.co.jp/rss/media/business/all.xml",
+        "Finasee": "https://news.yahoo.co.jp/rss/media/finasee/all.xml"
+    }
     
-    # Cache pour les news et les résumés
+    RSS_DESCRIPTIONS = {
+        "Forbes Japan": "Business and finance news with insights on companies and markets.",
+        "Diamond Online": "Economic and financial news from a leading Japanese business magazine.",
+        "Teikoku Databank": "Corporate credit reports, market trends, and industry insights.",
+        "Yahoo Business": "General business news and stock market updates in Japan.",
+        "Finasee": "Finance-focused news with emphasis on stocks, investments, and market trends."
+    }
+    
+    # --- Fetch RSS with caching ---
     @st.cache_data(show_spinner=False)
-    def fetch_news_rss(rss_url=None, top_n=10):
-        if rss_url is None:
-            rss_url = JAPANESE_FINANCIAL_RSS_FEEDS[0]  # Par défaut, Yahoo Japan
-        feed = feedparser.parse(rss_url)
-        return feed.entries[:top_n]
+    def fetch_news_rss(rss_urls, top_n=30):
+        import feedparser
+        all_entries = []
+        for url in rss_urls:
+            feed = feedparser.parse(url)
+            all_entries.extend(feed.entries)
+        # Sort by published date if available
+        all_entries.sort(key=lambda x: getattr(x, "published_parsed", None), reverse=True)
+        return all_entries[:top_n]
     
-    def summarize_news_mistral(title, summary=""):
-        prompt = f"Summarize this Japanese financial news in 2-3 sentences, keeping the key points:\nTitle: {title}\nSummary: {summary}"
+    # --- Summarization using Mistral AI ---
+    def summarize_news_mistral(news_entries):
+        # Prepare combined prompt
+        combined_text = ""
+        for entry in news_entries:
+            combined_text += f"Title: {entry.title}\nSummary: {getattr(entry, 'summary', '')}\nLink: {entry.link}\n\n"
+    
+        prompt = (
+            "You are an AI financial journalist. From the following Japanese business and market news, "
+            "choose the most pertinent items, summarize each in 2-3 sentences, "
+            "and structure the output clearly with the title, short summary, and link to the original article. "
+            "Prioritize relevance to markets, finance, and corporate news:\n\n"
+            f"{combined_text}"
+        )
     
         try:
+            from mistral import Mistral
             client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
             chat_response = client.chat.complete(
                 model="mistral-small-latest",
@@ -235,35 +261,27 @@ def main():
         except Exception as e:
             return f"Summary unavailable: {str(e)}"
     
-    # Interface Streamlit
-    st.title("📰 Japanese Market News (AI-Summarized)")
-    st.markdown("Latest financial news from Japan, summarized by Mistral AI.")
-    
-    # Sélection de la source RSS
-    source = st.selectbox(
-        "Select news source:",
-        ["Yahoo Japan", "Nikkei Asian Review", "Japan Times", "Reuters Japan"],
-        index=0
+    # --- Streamlit Interface ---
+    st.subheader("📰 Japanese Market News (AI-Summarized)")
+    st.markdown(
+        "Latest financial news from Japanese Yahoo Japan media sources, merged and summarized by Mistral AI Experiment* "
+        "(*free tier, limited requests)."
     )
-    rss_url = JAPANESE_FINANCIAL_RSS_FEEDS[
-        ["Yahoo Japan", "Nikkei Asian Review", "Japan Times", "Reuters Japan"].index(source)
-    ]
     
-    # Récupération et affichage des news
-    news_items = fetch_news_rss(rss_url, top_n=5)  # 5 news max par source
+    # Display sources and description
+    st.markdown("**Sources included:**")
+    for src, desc in RSS_DESCRIPTIONS.items():
+        st.markdown(f"- **{src}**: {desc}")
     
+    # Fetch and merge feeds
+    news_items = fetch_news_rss(list(JAPANESE_FINANCIAL_RSS_FEEDS.values()), top_n=30)
+    
+    # Generate AI summary
     if news_items:
-        for entry in news_items:
-            title = entry.title
-            summary_text = getattr(entry, "summary", "")
-            ai_summary = summarize_news_mistral(title, summary_text)
-    
-            with st.expander(f"**{title}**"):
-                st.markdown(f"[Read full article]({entry.link})")
-                st.markdown(f"**AI Summary:** {ai_summary}")
+        ai_summary = summarize_news_mistral(news_items)
+        st.markdown(ai_summary)
     else:
-            st.info("No news available at the moment.")
-
+        st.info("No news available at the moment.")
 
 if __name__ == "__main__":
     main()
