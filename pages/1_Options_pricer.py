@@ -7,6 +7,7 @@ from scipy.optimize import brentq
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
+from datetime import datetime, timedelta
 from utils import bs_price, greeks, d1, d2
 
 def enhanced_options_page():
@@ -659,7 +660,21 @@ def enhanced_options_page():
     with iv_col1:
         if not use_live_data or not market_option_data:
             market_price = st.number_input(
-                "Market Option 
+                "Market Option Price ($)", 
+                min_value=0.0, 
+                step=0.01,
+                help="Enter observed market price to calculate implied volatility"
+            )
+        else:
+            st.write(f"**Using Live Market Price:** ${market_price:.3f}")
+            manual_override = st.checkbox("Override with manual price")
+            if manual_override:
+                market_price = st.number_input(
+                    "Manual Option Price ($)", 
+                    value=market_price,
+                    min_value=0.0, 
+                    step=0.01
+                )
         
         if market_price > 0:
             try:
