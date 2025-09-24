@@ -31,14 +31,31 @@ def enhanced_options_page():
             data_source = st.radio("Data Source", ["Company Search / Ticker", "Custom Price"], horizontal=True)
             
             if data_source == "Company Search / Ticker":
-                # Company name to ticker mapping
+                # Company name to ticker mapping with logo URLs
                 popular_companies = {
-                    "Apple": "AAPL", "Microsoft": "MSFT", "Google": "GOOGL", "Amazon": "AMZN",
-                    "Tesla": "TSLA", "Meta": "META", "Netflix": "NFLX", "Nvidia": "NVDA",
-                    "JPMorgan": "JPM", "Berkshire": "BRK-B", "Johnson & Johnson": "JNJ",
-                    "Visa": "V", "Procter & Gamble": "PG", "Mastercard": "MA", "Disney": "DIS",
-                    "Coca Cola": "KO", "McDonald's": "MCD", "Nike": "NKE", "Intel": "INTC",
-                    "Walmart": "WMT", "Boeing": "BA", "IBM": "IBM", "Salesforce": "CRM"
+                    "Apple": {"ticker": "AAPL", "logo": "https://logo.clearbit.com/apple.com"},
+                    "Microsoft": {"ticker": "MSFT", "logo": "https://logo.clearbit.com/microsoft.com"},
+                    "Google": {"ticker": "GOOGL", "logo": "https://logo.clearbit.com/google.com"},
+                    "Amazon": {"ticker": "AMZN", "logo": "https://logo.clearbit.com/amazon.com"},
+                    "Tesla": {"ticker": "TSLA", "logo": "https://logo.clearbit.com/tesla.com"},
+                    "Meta": {"ticker": "META", "logo": "https://logo.clearbit.com/meta.com"},
+                    "Netflix": {"ticker": "NFLX", "logo": "https://logo.clearbit.com/netflix.com"},
+                    "Nvidia": {"ticker": "NVDA", "logo": "https://logo.clearbit.com/nvidia.com"},
+                    "JPMorgan": {"ticker": "JPM", "logo": "https://logo.clearbit.com/jpmorgan.com"},
+                    "Berkshire": {"ticker": "BRK-B", "logo": "https://logo.clearbit.com/berkshirehathaway.com"},
+                    "Johnson & Johnson": {"ticker": "JNJ", "logo": "https://logo.clearbit.com/jnj.com"},
+                    "Visa": {"ticker": "V", "logo": "https://logo.clearbit.com/visa.com"},
+                    "Procter & Gamble": {"ticker": "PG", "logo": "https://logo.clearbit.com/pg.com"},
+                    "Mastercard": {"ticker": "MA", "logo": "https://logo.clearbit.com/mastercard.com"},
+                    "Disney": {"ticker": "DIS", "logo": "https://logo.clearbit.com/disney.com"},
+                    "Coca Cola": {"ticker": "KO", "logo": "https://logo.clearbit.com/coca-cola.com"},
+                    "McDonald's": {"ticker": "MCD", "logo": "https://logo.clearbit.com/mcdonalds.com"},
+                    "Nike": {"ticker": "NKE", "logo": "https://logo.clearbit.com/nike.com"},
+                    "Intel": {"ticker": "INTC", "logo": "https://logo.clearbit.com/intel.com"},
+                    "Walmart": {"ticker": "WMT", "logo": "https://logo.clearbit.com/walmart.com"},
+                    "Boeing": {"ticker": "BA", "logo": "https://logo.clearbit.com/boeing.com"},
+                    "IBM": {"ticker": "IBM", "logo": "https://logo.clearbit.com/ibm.com"},
+                    "Salesforce": {"ticker": "CRM", "logo": "https://logo.clearbit.com/salesforce.com"}
                 }
                 
                 company_name = st.selectbox("Select Company or enter ticker below", 
@@ -46,10 +63,35 @@ def enhanced_options_page():
                                           help="Choose from popular companies or leave blank to enter ticker")
                 
                 if company_name:
-                    ticker = popular_companies[company_name]
-                    st.success(f"Selected: {company_name} ({ticker})")
+                    ticker = popular_companies[company_name]["ticker"]
+                    logo_url = popular_companies[company_name]["logo"]
+                    
+                    # Display company with logo
+                    col_logo, col_info = st.columns([1, 4])
+                    with col_logo:
+                        try:
+                            st.image(logo_url, width=60)
+                        except:
+                            st.write("🏢")  # Fallback emoji
+                    with col_info:
+                        st.success(f"**{company_name}** ({ticker})")
                 else:
                     ticker = st.text_input("Enter ticker symbol:", "AAPL", help="Yahoo Finance ticker symbol")
+                    
+                    # Try to get logo for manually entered ticker
+                    logo_url = None
+                    if ticker and len(ticker) > 0:
+                        try:
+                            # Attempt to fetch company info for logo
+                            test_stock = yf_import.Ticker(ticker)
+                            test_info = test_stock.info
+                            if test_info and 'website' in test_info:
+                                website = test_info['website']
+                                if website:
+                                    domain = website.replace('https://', '').replace('http://', '').replace('www.', '')
+                                    logo_url = f"https://logo.clearbit.com/{domain}"
+                        except:
+                            logo_url = None
                 
                 # Fetch and display stock data with error handling
                 try:
@@ -168,9 +210,22 @@ def enhanced_options_page():
         with col2:
             st.subheader("⚙️ Option Parameters")
             
-            # Enhanced parameter inputs
-            option_type = st.selectbox("Option Type", ["call", "put"], 
-                                     help="Call options profit when price rises, puts when price falls")
+            # Enhanced option type selection with strategies
+            option_type = st.selectbox(
+                "Option Strategy", 
+                ["call", "put", "straddle", "strangle", "bull_call_spread", "bear_put_spread", "iron_condor", "butterfly"],
+                format_func=lambda x: {
+                    "call": "Call Option",
+                    "put": "Put Option", 
+                    "straddle": "Long Straddle",
+                    "strangle": "Long Strangle",
+                    "bull_call_spread": "Bull Call Spread",
+                    "bear_put_spread": "Bear Put Spread", 
+                    "iron_condor": "Iron Condor",
+                    "butterfly": "Call Butterfly"
+                }[x],
+                help="Select single option or multi-leg strategy"
+            )
             
             # Time to expiration with calendar
             expiry_method = st.radio("Expiration Method", ["Days", "Calendar Date"], horizontal=True)
@@ -209,95 +264,436 @@ def enhanced_options_page():
                                 help="Annual volatility (standard deviation of returns)") / 100
     
     # === ENHANCED STRIKE SELECTION ===
-    st.subheader("🎯 Strike Price Selection")
+    st.subheader("Strike Price Configuration")
+    
+    # Strategy information
+    strategy_info = {
+        "call": {"legs": 1, "description": "Single call option - profit when price rises above strike"},
+        "put": {"legs": 1, "description": "Single put option - profit when price falls below strike"},
+        "straddle": {"legs": 2, "description": "Long call + long put at same strike - profit from large moves in either direction"},
+        "strangle": {"legs": 2, "description": "Long call + long put at different strikes - profit from large moves, lower cost than straddle"},
+        "bull_call_spread": {"legs": 2, "description": "Long call (lower strike) + short call (higher strike) - limited profit/loss"},
+        "bear_put_spread": {"legs": 2, "description": "Long put (higher strike) + short put (lower strike) - limited profit/loss"},
+        "iron_condor": {"legs": 4, "description": "Short straddle + long strangle - profit when price stays in range"},
+        "butterfly": {"legs": 3, "description": "Long 2 calls at middle strike + short calls at wings - profit when price near middle"}
+    }
+    
+    st.info(f"**{strategy_info[option_type]['description']}** ({strategy_info[option_type]['legs']} legs)")
     
     strike_col1, strike_col2 = st.columns([2, 1])
     
     with strike_col1:
-        strike_method = st.radio(
-            "Strike Selection Method",
-            ["Preset Levels", "Custom Strike", "Moneyness %"],
-            horizontal=True,
-            help="Choose how to set the option strike price"
-        )
+        if option_type in ["call", "put"]:
+            # Single strike for vanilla options
+            strike_method = st.radio(
+                "Strike Selection Method",
+                ["Preset Levels", "Custom Strike", "Moneyness %"],
+                horizontal=True,
+                help="Choose how to set the option strike price"
+            )
+            
+            if strike_method == "Preset Levels":
+                preset_options = {
+                    "Deep ITM": S * (0.85 if option_type == "call" else 1.15),
+                    "ITM": S * (0.95 if option_type == "call" else 1.05),
+                    "ATM": S,
+                    "OTM": S * (1.05 if option_type == "call" else 0.95),
+                    "Deep OTM": S * (1.15 if option_type == "call" else 0.85)
+                }
+                
+                preset_choice = st.selectbox("Select Strike Level", list(preset_options.keys()), index=2)
+                K = preset_options[preset_choice]
+                K2 = None
+                K3 = None
+                K4 = None
+                
+            elif strike_method == "Custom Strike":
+                K = st.number_input("Strike Price ($)", value=float(S), min_value=0.01, step=0.01)
+                K2 = None
+                K3 = None 
+                K4 = None
+                
+            else:  # Moneyness %
+                moneyness_pct = st.slider("Moneyness (%)", 70, 130, 100, 1,
+                                        help="Strike as % of current price")
+                K = S * (moneyness_pct / 100)
+                K2 = None
+                K3 = None
+                K4 = None
         
-        if strike_method == "Preset Levels":
-            preset_options = {
-                "Deep ITM": S * (0.85 if option_type == "call" else 1.15),
-                "ITM": S * (0.95 if option_type == "call" else 1.05),
-                "ATM": S,
-                "OTM": S * (1.05 if option_type == "call" else 0.95),
-                "Deep OTM": S * (1.15 if option_type == "call" else 0.85)
-            }
+        elif option_type == "straddle":
+            # Same strike for both call and put
+            K = st.number_input("Strike Price ($)", value=float(S), min_value=0.01, step=0.01,
+                               help="Both call and put use same strike")
+            K2 = None
+            K3 = None
+            K4 = None
             
-            preset_choice = st.selectbox("Select Strike Level", list(preset_options.keys()), index=2)
-            K = preset_options[preset_choice]
+        elif option_type == "strangle":
+            # Different strikes for call and put
+            col_put, col_call = st.columns(2)
+            with col_put:
+                K_put = st.number_input("Put Strike ($)", value=float(S * 0.95), min_value=0.01, step=0.01)
+            with col_call:
+                K_call = st.number_input("Call Strike ($)", value=float(S * 1.05), min_value=0.01, step=0.01)
+            K = K_put  # Use put strike as primary
+            K2 = K_call
+            K3 = None
+            K4 = None
             
-        elif strike_method == "Custom Strike":
-            K = st.number_input("Strike Price ($)", value=float(S), min_value=0.01, step=0.01)
+        elif option_type in ["bull_call_spread", "bear_put_spread"]:
+            # Two strikes for spreads
+            col_low, col_high = st.columns(2)
+            with col_low:
+                K_low = st.number_input("Lower Strike ($)", value=float(S * 0.95), min_value=0.01, step=0.01)
+            with col_high:
+                K_high = st.number_input("Higher Strike ($)", value=float(S * 1.05), min_value=0.01, step=0.01)
+            K = K_low
+            K2 = K_high
+            K3 = None
+            K4 = None
             
-        else:  # Moneyness %
-            moneyness_pct = st.slider("Moneyness (%)", 70, 130, 100, 1,
-                                    help="Strike as % of current price")
-            K = S * (moneyness_pct / 100)
+        elif option_type == "butterfly":
+            # Three strikes: lower wing, body, upper wing
+            col_low, col_mid, col_high = st.columns(3)
+            with col_low:
+                K_low = st.number_input("Lower Wing ($)", value=float(S * 0.9), min_value=0.01, step=0.01)
+            with col_mid:
+                K_mid = st.number_input("Body Strike ($)", value=float(S), min_value=0.01, step=0.01)
+            with col_high:
+                K_high = st.number_input("Upper Wing ($)", value=float(S * 1.1), min_value=0.01, step=0.01)
+            K = K_low
+            K2 = K_mid
+            K3 = K_high
+            K4 = None
+            
+        elif option_type == "iron_condor":
+            # Four strikes
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                K1 = st.number_input("Put Strike 1 ($)", value=float(S * 0.9), min_value=0.01, step=0.01)
+            with col2:
+                K2 = st.number_input("Put Strike 2 ($)", value=float(S * 0.95), min_value=0.01, step=0.01)
+            with col3:
+                K3 = st.number_input("Call Strike 1 ($)", value=float(S * 1.05), min_value=0.01, step=0.01)
+            with col4:
+                K4 = st.number_input("Call Strike 2 ($)", value=float(S * 1.1), min_value=0.01, step=0.01)
+            K = K1  # Use first strike as primary
     
     with strike_col2:
-        # Moneyness indicator
-        moneyness = S / K
+        # Display strategy summary
+        if option_type in ["call", "put"]:
+            moneyness = S / K
+            if option_type == "call":
+                if moneyness > 1.05:
+                    status = "In-The-Money"
+                    color = "green"
+                elif moneyness > 0.95:
+                    status = "At-The-Money"
+                    color = "blue"
+                else:
+                    status = "Out-Of-The-Money"
+                    color = "red"
+            else:
+                if moneyness < 0.95:
+                    status = "In-The-Money"
+                    color = "green"
+                elif moneyness < 1.05:
+                    status = "At-The-Money" 
+                    color = "blue"
+                else:
+                    status = "Out-Of-The-Money"
+                    color = "red"
+            
+            st.markdown(f"**Strike:** ${K:.2f}")
+            st.markdown(f"**Status:** {status}")
+            st.markdown(f"**Moneyness:** {moneyness:.3f}")
+            
+        elif option_type == "straddle":
+            st.markdown(f"**Strike:** ${K:.2f}")
+            st.markdown("**Type:** ATM Straddle")
+            st.markdown(f"**Breakeven:** ±{abs(S-K)/S:.1%}")
+            
+        elif option_type == "strangle":
+            st.markdown(f"**Put Strike:** ${K:.2f}")
+            st.markdown(f"**Call Strike:** ${K2:.2f}")
+            width = abs(K2 - K)
+            st.markdown(f"**Width:** ${width:.2f}")
+            
+        elif option_type in ["bull_call_spread", "bear_put_spread"]:
+            st.markdown(f"**Lower:** ${K:.2f}")
+            st.markdown(f"**Higher:** ${K2:.2f}")
+            width = K2 - K
+            st.markdown(f"**Width:** ${width:.2f}")
+            
+        elif option_type == "butterfly":
+            st.markdown(f"**Wings:** ${K:.2f} / ${K3:.2f}")
+            st.markdown(f"**Body:** ${K2:.2f}")
+            wing_width = (K2 - K + K3 - K2) / 2
+            st.markdown(f"**Wing Width:** ${wing_width:.2f}")
+            
+        elif option_type == "iron_condor":
+            st.markdown(f"**Put Wing:** ${K1:.2f}-${K2:.2f}")
+            st.markdown(f"**Call Wing:** ${K3:.2f}-${K4:.2f}")
+            profit_range = K3 - K2
+            st.markdown(f"**Profit Range:** ${profit_range:.2f}")
+    
+    # === OPTION STRATEGY VALUATION & GREEKS ===
+    def calculate_strategy_price_and_greeks(S, strikes, T, r, sigma, option_type):
+        """Calculate price and Greeks for various option strategies"""
         
         if option_type == "call":
-            if moneyness > 1.05:
-                status = "🟢 In-The-Money"
-                color = "green"
-            elif moneyness > 0.95:
-                status = "🔵 At-The-Money"
-                color = "blue"
-            else:
-                status = "🔴 Out-Of-The-Money"
-                color = "red"
-        else:
-            if moneyness < 0.95:
-                status = "🟢 In-The-Money"
-                color = "green"
-            elif moneyness < 1.05:
-                status = "🔵 At-The-Money"
-                color = "blue"
-            else:
-                status = "🔴 Out-Of-The-Money"
-                color = "red"
+            price = bs_price(S, strikes[0], T, r, sigma, "call")
+            delta, gamma, vega, theta, rho = greeks(S, strikes[0], T, r, sigma, "call")
+            
+        elif option_type == "put":
+            price = bs_price(S, strikes[0], T, r, sigma, "put")
+            delta, gamma, vega, theta, rho = greeks(S, strikes[0], T, r, sigma, "put")
+            
+        elif option_type == "straddle":
+            # Long call + Long put at same strike
+            call_price = bs_price(S, strikes[0], T, r, sigma, "call")
+            put_price = bs_price(S, strikes[0], T, r, sigma, "put")
+            price = call_price + put_price
+            
+            call_greeks = greeks(S, strikes[0], T, r, sigma, "call")
+            put_greeks = greeks(S, strikes[0], T, r, sigma, "put")
+            
+            delta = call_greeks[0] + put_greeks[0]
+            gamma = call_greeks[1] + put_greeks[1]
+            vega = call_greeks[2] + put_greeks[2]
+            theta = call_greeks[3] + put_greeks[3]
+            rho = call_greeks[4] + put_greeks[4]
+            
+        elif option_type == "strangle":
+            # Long put (lower strike) + Long call (higher strike)
+            put_price = bs_price(S, strikes[0], T, r, sigma, "put")
+            call_price = bs_price(S, strikes[1], T, r, sigma, "call")
+            price = put_price + call_price
+            
+            put_greeks = greeks(S, strikes[0], T, r, sigma, "put")
+            call_greeks = greeks(S, strikes[1], T, r, sigma, "call")
+            
+            delta = put_greeks[0] + call_greeks[0]
+            gamma = put_greeks[1] + call_greeks[1]
+            vega = put_greeks[2] + call_greeks[2]
+            theta = put_greeks[3] + call_greeks[3]
+            rho = put_greeks[4] + call_greeks[4]
+            
+        elif option_type == "bull_call_spread":
+            # Long call (lower strike) - Short call (higher strike)
+            long_call_price = bs_price(S, strikes[0], T, r, sigma, "call")
+            short_call_price = bs_price(S, strikes[1], T, r, sigma, "call")
+            price = long_call_price - short_call_price
+            
+            long_greeks = greeks(S, strikes[0], T, r, sigma, "call")
+            short_greeks = greeks(S, strikes[1], T, r, sigma, "call")
+            
+            delta = long_greeks[0] - short_greeks[0]
+            gamma = long_greeks[1] - short_greeks[1]
+            vega = long_greeks[2] - short_greeks[2]
+            theta = long_greeks[3] - short_greeks[3]
+            rho = long_greeks[4] - short_greeks[4]
+            
+        elif option_type == "bear_put_spread":
+            # Long put (higher strike) - Short put (lower strike)
+            long_put_price = bs_price(S, strikes[1], T, r, sigma, "put")
+            short_put_price = bs_price(S, strikes[0], T, r, sigma, "put")
+            price = long_put_price - short_put_price
+            
+            long_greeks = greeks(S, strikes[1], T, r, sigma, "put")
+            short_greeks = greeks(S, strikes[0], T, r, sigma, "put")
+            
+            delta = long_greeks[0] - short_greeks[0]
+            gamma = long_greeks[1] - short_greeks[1]
+            vega = long_greeks[2] - short_greeks[2]
+            theta = long_greeks[3] - short_greeks[3]
+            rho = long_greeks[4] - short_greeks[4]
+            
+        elif option_type == "butterfly":
+            # Long call (lower) + Long call (upper) - 2 * Short call (middle)
+            lower_call_price = bs_price(S, strikes[0], T, r, sigma, "call")
+            middle_call_price = bs_price(S, strikes[1], T, r, sigma, "call")
+            upper_call_price = bs_price(S, strikes[2], T, r, sigma, "call")
+            price = lower_call_price + upper_call_price - 2 * middle_call_price
+            
+            lower_greeks = greeks(S, strikes[0], T, r, sigma, "call")
+            middle_greeks = greeks(S, strikes[1], T, r, sigma, "call")
+            upper_greeks = greeks(S, strikes[2], T, r, sigma, "call")
+            
+            delta = lower_greeks[0] + upper_greeks[0] - 2 * middle_greeks[0]
+            gamma = lower_greeks[1] + upper_greeks[1] - 2 * middle_greeks[1]
+            vega = lower_greeks[2] + upper_greeks[2] - 2 * middle_greeks[2]
+            theta = lower_greeks[3] + upper_greeks[3] - 2 * middle_greeks[3]
+            rho = lower_greeks[4] + upper_greeks[4] - 2 * middle_greeks[4]
+            
+        elif option_type == "iron_condor":
+            # Short put spread + Short call spread
+            # -Put(K1) +Put(K2) -Call(K3) +Call(K4)
+            put1_price = bs_price(S, K1, T, r, sigma, "put")
+            put2_price = bs_price(S, K2, T, r, sigma, "put") 
+            call3_price = bs_price(S, K3, T, r, sigma, "call")
+            call4_price = bs_price(S, K4, T, r, sigma, "call")
+            price = -put1_price + put2_price - call3_price + call4_price
+            
+            put1_greeks = greeks(S, K1, T, r, sigma, "put")
+            put2_greeks = greeks(S, K2, T, r, sigma, "put")
+            call3_greeks = greeks(S, K3, T, r, sigma, "call")
+            call4_greeks = greeks(S, K4, T, r, sigma, "call")
+            
+            delta = -put1_greeks[0] + put2_greeks[0] - call3_greeks[0] + call4_greeks[0]
+            gamma = -put1_greeks[1] + put2_greeks[1] - call3_greeks[1] + call4_greeks[1]
+            vega = -put1_greeks[2] + put2_greeks[2] - call3_greeks[2] + call4_greeks[2]
+            theta = -put1_greeks[3] + put2_greeks[3] - call3_greeks[3] + call4_greeks[3]
+            rho = -put1_greeks[4] + put2_greeks[4] - call3_greeks[4] + call4_greeks[4]
         
-        st.markdown(f"**Selected Strike:** ${K:.2f}")
-        st.markdown(f"**Status:** {status}")
-        st.markdown(f"**Moneyness:** {moneyness:.3f}")
+        return price, delta, gamma, vega, theta, rho
     
-    # === OPTION VALUATION & GREEKS ===
     try:
-        price = bs_price(S, K, T, r, sigma, option=option_type)
-        delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
+        # Prepare strikes array based on strategy
+        if option_type in ["call", "put", "straddle"]:
+            strikes = [K]
+        elif option_type in ["strangle", "bull_call_spread", "bear_put_spread"]:
+            strikes = [K, K2]
+        elif option_type == "butterfly":
+            strikes = [K, K2, K3]
+        elif option_type == "iron_condor":
+            strikes = [K1, K2, K3, K4]
         
-        intrinsic = max(0, (S-K) if option_type=='call' else (K-S))
-        time_value = max(0, price - intrinsic)
+        price, delta, gamma, vega, theta, rho = calculate_strategy_price_and_greeks(
+            S, strikes, T, r, sigma, option_type
+        )
         
+        # Calculate strategy-specific metrics
+        if option_type in ["call", "put"]:
+            intrinsic = max(0, (S-K) if option_type=='call' else (K-S))
+            time_value = max(0, price - intrinsic)
+            max_profit = "Unlimited" if option_type == "call" else f"${K:.2f}"
+            max_loss = f"${price:.2f}"
+            
+        elif option_type == "straddle":
+            intrinsic = max(S-K, 0) + max(K-S, 0)  # Either call or put ITM
+            time_value = max(0, price - intrinsic)
+            breakeven_up = K + price
+            breakeven_down = K - price
+            max_profit = "Unlimited"
+            max_loss = f"${price:.2f}"
+            
+        elif option_type == "strangle":
+            intrinsic = max(K-S, 0) + max(S-K2, 0)  # Put + Call intrinsic
+            time_value = max(0, price - intrinsic)
+            breakeven_up = K2 + price
+            breakeven_down = K - price
+            max_profit = "Unlimited"
+            max_loss = f"${price:.2f}"
+            
+        elif option_type in ["bull_call_spread", "bear_put_spread"]:
+            width = abs(K2 - K)
+            max_profit = f"${width - price:.2f}"
+            max_loss = f"${price:.2f}" if price > 0 else f"${abs(price):.2f}"
+            intrinsic = 0  # Simplified for spreads
+            time_value = price
+            
+        elif option_type == "butterfly":
+            wing_width = min(K2 - K, K3 - K2)
+            max_profit = f"${wing_width - price:.2f}"
+            max_loss = f"${abs(price):.2f}"
+            intrinsic = 0
+            time_value = price
+            
+        elif option_type == "iron_condor":
+            put_width = K2 - K1
+            call_width = K4 - K3
+            premium_collected = abs(price)
+            max_profit = f"${premium_collected:.2f}"
+            max_loss = f"${max(put_width, call_width) - premium_collected:.2f}"
+            intrinsic = 0
+            time_value = price
+            
     except Exception as e:
         st.error(f"Calculation error: {str(e)}")
         return
     
     # === ENHANCED RESULTS DISPLAY ===
-    st.subheader("💰 Valuation Results")
+    st.subheader("Strategy Valuation Results")
     
-    # Main metrics in enhanced layout
+    # Main metrics with strategy-specific information
     metric_cols = st.columns(5)
     
     with metric_cols[0]:
-        st.metric("Option Price", f"${price:.3f}", 
-                 help=f"Theoretical {option_type} option value")
+        strategy_name = {
+            "call": "Call Price",
+            "put": "Put Price", 
+            "straddle": "Straddle Price",
+            "strangle": "Strangle Price",
+            "bull_call_spread": "Bull Spread Cost",
+            "bear_put_spread": "Bear Spread Cost",
+            "iron_condor": "Net Premium",
+            "butterfly": "Butterfly Cost"
+        }[option_type]
+        
+        st.metric(strategy_name, f"${price:.3f}", 
+                 help=f"Total cost/premium for {option_type}")
     
     with metric_cols[1]:
-        st.metric("Intrinsic Value", f"${intrinsic:.3f}",
-                 help="Value if exercised immediately")
+        if option_type in ["call", "put", "straddle", "strangle"]:
+            st.metric("Intrinsic Value", f"${intrinsic:.3f}",
+                     help="Value if exercised immediately")
+        else:
+            st.metric("Net Debit/Credit", f"${price:.3f}",
+                     help="Net cost (positive) or credit (negative)")
     
     with metric_cols[2]:
-        st.metric("Time Value", f"${time_value:.3f}",
+        if option_type in ["call", "put", "straddle", "strangle"]:
+            st.metric("Time Value", f"${time_value:.3f}",
+                     help="Premium above intrinsic value")
+        else:
+            st.metric("Max Profit", max_profit,
+                     help="Maximum possible profit")
+    
+    with metric_cols[3]:
+        if option_type in ["call", "put"]:
+            leverage = (delta * S) / price if price > 0.001 else 0
+            st.metric("Leverage", f"{leverage:.1f}x",
+                     help="Effective leverage vs. owning stock")
+        else:
+            st.metric("Max Loss", max_loss,
+                     help="Maximum possible loss")
+    
+    with metric_cols[4]:
+        if option_type in ["call", "put"]:
+            breakeven = K + price if option_type == 'call' else K - price
+            st.metric("Breakeven", f"${breakeven:.2f}",
+                     help="Stock price needed to break even")
+        elif option_type == "straddle":
+            st.metric("Breakeven Range", f"${breakeven_down:.2f} - ${breakeven_up:.2f}",
+                     help="Price range for breakeven")
+        elif option_type == "strangle":
+            st.metric("Breakeven Range", f"${breakeven_down:.2f} - ${breakeven_up:.2f}",
+                     help="Price range for breakeven")
+        else:
+            profit_range = ""
+            if option_type == "bull_call_spread":
+                profit_range = f"${K:.0f} - ${K2:.0f}"
+            elif option_type == "bear_put_spread":
+                profit_range = f"${K:.0f} - ${K2:.0f}"
+            elif option_type == "iron_condor":
+                profit_range = f"${K2:.0f} - ${K3:.0f}"
+            elif option_type == "butterfly":
+                profit_range = f"Near ${K2:.0f}"
+                
+            st.metric("Profit Zone", profit_range,
+                     help="Price range for maximum profit")
+    
+    # Strategy-specific additional info
+    if option_type in ["straddle", "strangle"]:
+        st.info(f"**Volatility Play:** Profits from large moves in either direction. Current implied move: ±{price/S:.1%}")
+    elif option_type in ["bull_call_spread", "bear_put_spread"]: 
+        st.info(f"**Directional Spread:** Limited risk/reward. Width: ${abs(K2-K):.2f}")
+    elif option_type == "iron_condor":
+        st.info(f"**Range Strategy:** Profits when price stays between ${K2:.0f} and ${K3:.0f}")
+    elif option_type == "butterfly":
+        st.info(f"**Pin Risk Strategy:** Maximum profit when price exactly at ${K2:.2f} at expiration")"${time_value:.3f}",
                  help="Premium above intrinsic value")
     
     with metric_cols[3]:
@@ -427,63 +823,138 @@ def enhanced_options_page():
     with viz_tab2:
         st.write("**Profit & Loss Analysis at Expiration**")
         
-        # P&L calculation
+        # P&L calculation for different strategies
         S_expiry = np.linspace(S*0.7, S*1.3, 100)
-        option_pnl = []
-        stock_pnl = []
+        strategy_pnl = []
         
         for S_exp in S_expiry:
-            # Option P&L (assuming we bought the option)
-            if option_type == 'call':
-                option_value_exp = max(0, S_exp - K)
-            else:
-                option_value_exp = max(0, K - S_exp)
-            
-            opt_pnl = option_value_exp - price
-            stock_pnl_val = S_exp - S
-            
-            option_pnl.append(opt_pnl)
-            stock_pnl.append(stock_pnl_val)
+            if option_type == "call":
+                option_value = max(0, S_exp - K)
+                pnl = option_value - price
+                
+            elif option_type == "put":
+                option_value = max(0, K - S_exp)
+                pnl = option_value - price
+                
+            elif option_type == "straddle":
+                call_value = max(0, S_exp - K)
+                put_value = max(0, K - S_exp)
+                pnl = call_value + put_value - price
+                
+            elif option_type == "strangle":
+                call_value = max(0, S_exp - K2)  # Call at higher strike
+                put_value = max(0, K - S_exp)   # Put at lower strike
+                pnl = call_value + put_value - price
+                
+            elif option_type == "bull_call_spread":
+                long_call_value = max(0, S_exp - K)
+                short_call_value = max(0, S_exp - K2)
+                pnl = long_call_value - short_call_value - price
+                
+            elif option_type == "bear_put_spread":
+                long_put_value = max(0, K2 - S_exp)
+                short_put_value = max(0, K - S_exp)
+                pnl = long_put_value - short_put_value - price
+                
+            elif option_type == "butterfly":
+                lower_call = max(0, S_exp - K)
+                middle_call = max(0, S_exp - K2)
+                upper_call = max(0, S_exp - K3)
+                pnl = lower_call - 2*middle_call + upper_call - price
+                
+            elif option_type == "iron_condor":
+                put1_value = max(0, K1 - S_exp)
+                put2_value = max(0, K2 - S_exp)
+                call3_value = max(0, S_exp - K3)
+                call4_value = max(0, S_exp - K4)
+                pnl = -put1_value + put2_value - call3_value + call4_value + price
+                
+            strategy_pnl.append(pnl)
         
         # Create P&L chart
         fig_pnl = go.Figure()
         
         fig_pnl.add_trace(go.Scatter(
-            x=S_expiry, y=option_pnl,
-            name=f'{option_type.title()} Option P&L',
-            line=dict(color='blue', width=3)
+            x=S_expiry, y=strategy_pnl,
+            name=f'{strategy_info[option_type]["legs"]}-Leg Strategy P&L',
+            line=dict(color='blue', width=3),
+            fill='tonexty' if min(strategy_pnl) < 0 else 'tozeroy',
+            fillcolor='rgba(0,100,80,0.2)' if min(strategy_pnl) >= 0 else 'rgba(255,0,0,0.1)'
         ))
         
-        fig_pnl.add_trace(go.Scatter(
-            x=S_expiry, y=stock_pnl,
-            name='Stock P&L',
-            line=dict(color='gray', width=2, dash='dash')
-        ))
-        
-        # Add reference lines
+        # Add breakeven lines
         fig_pnl.add_hline(y=0, line_dash="solid", line_color="black", opacity=0.3)
         fig_pnl.add_vline(x=S, line_dash="dash", line_color="black", opacity=0.5,
                          annotation_text="Current Price")
-        fig_pnl.add_vline(x=breakeven, line_dash="dot", line_color="red",
-                         annotation_text=f"Breakeven: ${breakeven:.0f}")
+        
+        # Add strategy-specific reference lines
+        if option_type in ["call", "put"]:
+            breakeven = K + price if option_type == 'call' else K - price
+            fig_pnl.add_vline(x=breakeven, line_dash="dot", line_color="red",
+                             annotation_text=f"Breakeven: ${breakeven:.0f}")
+                             
+        elif option_type in ["straddle", "strangle"]:
+            if option_type == "straddle":
+                be_up, be_down = K + price, K - price
+            else:
+                be_up, be_down = K2 + price, K - price
+            fig_pnl.add_vline(x=be_up, line_dash="dot", line_color="green",
+                             annotation_text=f"Upper BE: ${be_up:.0f}")
+            fig_pnl.add_vline(x=be_down, line_dash="dot", line_color="green",
+                             annotation_text=f"Lower BE: ${be_down:.0f}")
+                             
+        elif option_type in ["bull_call_spread", "bear_put_spread"]:
+            fig_pnl.add_vline(x=K, line_dash="dot", line_color="orange",
+                             annotation_text=f"Lower Strike: ${K:.0f}")
+            fig_pnl.add_vline(x=K2, line_dash="dot", line_color="orange",
+                             annotation_text=f"Upper Strike: ${K2:.0f}")
+                             
+        elif option_type == "iron_condor":
+            fig_pnl.add_vline(x=K2, line_dash="dot", line_color="green",
+                             annotation_text=f"Profit Zone Start: ${K2:.0f}")
+            fig_pnl.add_vline(x=K3, line_dash="dot", line_color="green",
+                             annotation_text=f"Profit Zone End: ${K3:.0f}")
+                             
+        elif option_type == "butterfly":
+            fig_pnl.add_vline(x=K2, line_dash="dot", line_color="purple",
+                             annotation_text=f"Max Profit: ${K2:.0f}")
         
         fig_pnl.update_layout(
-            title="Profit/Loss at Expiration",
+            title=f"{strategy_info[option_type]['legs']}-Leg Strategy: Profit/Loss at Expiration",
             xaxis_title="Stock Price at Expiration ($)",
             yaxis_title="Profit/Loss ($)",
-            height=400
+            height=500
         )
         
         st.plotly_chart(fig_pnl, use_container_width=True)
         
-        # P&L statistics
-        max_profit_idx = np.argmax(option_pnl)
-        max_loss_idx = np.argmin(option_pnl)
+        # Strategy-specific statistics
+        max_profit_val = max(strategy_pnl)
+        max_loss_val = min(strategy_pnl)
+        prob_profit = np.mean(np.array(strategy_pnl) > 0) * 100
         
         pnl_col1, pnl_col2, pnl_col3 = st.columns(3)
-        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < 1000 else "Unlimited")
-        pnl_col2.metric("Max Loss", f"${min(option_pnl):.2f}")
-        pnl_col3.metric("Prob. of Profit", f"{np.mean(np.array(option_pnl) > 0)*100:.1f}%")
+        
+        if max_profit_val > 1000:
+            pnl_col1.metric("Max Profit", "Unlimited")
+        else:
+            pnl_col1.metric("Max Profit", f"${max_profit_val:.2f}")
+            
+        pnl_col2.metric("Max Loss", f"${abs(max_loss_val):.2f}")
+        pnl_col3.metric("Prob. of Profit", f"{prob_profit:.1f}%")
+        
+        # Strategy insights
+        if option_type in ["straddle", "strangle"]:
+            implied_move = price / S * 100
+            st.info(f"Market implies {implied_move:.1f}% move needed for breakeven")
+        elif option_type in ["bull_call_spread", "bear_put_spread"]:
+            risk_reward = abs(max_profit_val / max_loss_val) if max_loss_val != 0 else 0
+            st.info(f"Risk/Reward Ratio: 1:{risk_reward:.2f}")
+        elif option_type == "iron_condor":
+            profit_width = K3 - K2
+            st.info(f"Profit zone width: ${profit_width:.2f} ({profit_width/S:.1%} of stock price)")
+        elif option_type == "butterfly":
+            st.info(f"Maximum profit occurs when stock price exactly equals ${K2:.2f} at expiration")
     
     with viz_tab3:
         st.write("**Time Decay Analysis**")
