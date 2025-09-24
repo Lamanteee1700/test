@@ -620,14 +620,21 @@ def enhanced_options_page():
             intrinsic = 0
             time_value = price
             
-        elif option_type == "iron_condor":
-            put_width = K2 - K1
-            call_width = K4 - K3
-            premium_collected = abs(price)
-            max_profit = f"${premium_collected:.2f}"
-            max_loss = f"${max(put_width, call_width) - premium_collected:.2f}"
-            intrinsic = 0
-            time_value = price
+        else:  # iron_condor
+            try:
+                put_width = K2 - K1
+                call_width = K4 - K3
+                premium_collected = abs(price)
+                max_profit = f"${premium_collected:.2f}"
+                max_loss = f"${max(put_width, call_width) - premium_collected:.2f}"
+                intrinsic = 0
+                time_value = price
+            except:
+                # Fallback for iron_condor if variables not defined
+                max_profit = "N/A"
+                max_loss = "N/A"
+                intrinsic = 0
+                time_value = price
             
     except Exception as e:
         st.error(f"Calculation error: {str(e)}")
