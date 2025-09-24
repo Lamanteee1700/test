@@ -27,11 +27,11 @@ def enhanced_options_page():
         with col1:
             st.subheader("📈 Market Data")
             
-            # Enhanced ticker input with company search
-            search_method = st.radio("Search Method", ["By Ticker", "By Company Name"], horizontal=True)
+            # Price data source selection
+            data_source = st.radio("Data Source", ["Company Search / Ticker", "Custom Price"], horizontal=True)
             
-            if search_method == "By Company Name":
-                # Basic company name to ticker mapping (limited but useful for major companies)
+            if data_source == "Company Search / Ticker":
+                # Company name to ticker mapping
                 popular_companies = {
                     "Apple": "AAPL", "Microsoft": "MSFT", "Google": "GOOGL", "Amazon": "AMZN",
                     "Tesla": "TSLA", "Meta": "META", "Netflix": "NFLX", "Nvidia": "NVDA",
@@ -41,35 +41,57 @@ def enhanced_options_page():
                     "Walmart": "WMT", "Boeing": "BA", "IBM": "IBM", "Salesforce": "CRM"
                 }
                 
-                company_name = st.selectbox("Select Company", 
+                company_name = st.selectbox("Select Company or enter ticker below", 
                                           [""] + list(popular_companies.keys()),
-                                          help="Choose from popular companies")
+                                          help="Choose from popular companies or leave blank to enter ticker")
                 
                 if company_name:
                     ticker = popular_companies[company_name]
                     st.success(f"Selected: {company_name} ({ticker})")
                 else:
-                    ticker = st.text_input("Or enter ticker directly:", "AAPL")
-            else:
-                ticker_col1, ticker_col2 = st.columns([3, 1])
-                with ticker_col1:
-                    ticker = st.text_input("Stock Ticker", "AAPL", help="Enter any Yahoo Finance ticker symbol")
-                with ticker_col2:
-                    refresh_data = st.button("🔄", help="Refresh data")
-            
-            # Fetch and display stock data with error handling
-            try:
-                stock = yf.Ticker(ticker)
-                data = stock.history(period="5d")
-                info = stock.info
+                    ticker = st.text_input("Enter ticker symbol:", "AAPL", help="Yahoo Finance ticker symbol")
                 
-                if data.empty:
-                    st.error("Invalid ticker or no data available")
-                    return
+                # Fetch and display stock data with error handling
+                try:
+                    import yfinance as yf_import
+                    stock = yf_import.Ticker(ticker)
+                    data = stock.history(period="20d")  # Get more data for volatility calculation
+                    info = stock.info
                     
-                S = data["Close"].iloc[-1]
-                prev_close = data["Close"].iloc[-2] if len(data) > 1 else S
-                change_pct = (S - prev_close) / prev_close * 100
+                    if data.empty:
+                        st.error("Invalid ticker or no data available")
+                        return
+                        
+                    S = data["Close"].iloc[-1]
+                    prev_close = data["Close"].iloc[-2] if len(data) > 1 else S
+                    change_pct = (S - prev_close) / prev_close * 100
+                    
+                    # Calculate historical volatility from data
+                    if len(data) >= 10:
+                        returns = np.log(data['Close'] / data['Close'].shift(1)).dropna()
+                        hist_vol = returns.std() * np.sqrt(252)
+                        online_vol_available = True
+                    else:
+                        hist_vol = 0.2  # Default fallback
+                        online_vol_available = False
+                        
+                except Exception as e:
+                    st.error(f"Error fetching data: {str(e)}")
+                    S = 100.0  # Default fallback
+                    hist_vol = 0.2
+                    online_vol_available = False
+                    st.warning("Using default values for demonstration")
+            else:
+                # Custom price input
+                S = st.number_input("Custom Stock Price ($)", value=100.0, min_value=0.01, step=0.01)
+                change_pct = 0
+                hist_vol = 0.2
+                online_vol_available = False
+                ticker = "CUSTOM"
+                info = None
+                st.info(f"Using custom price: ${S:.2f}")
+            
+            if data_source == "Company Search / Ticker" and info:
                 
                 # Company Information Display
                 if info and len(info) > 5:  # Ensure we have substantial company data
@@ -124,7 +146,6 @@ def enhanced_options_page():
                                     metrics_df = pd.DataFrame(metrics_data)
                                     st.dataframe(metrics_df, use_container_width=True, hide_index=True)
                     else:
-                        # Fallback for minimal company info
                         st.info(f"📊 Analyzing: **{ticker}** - Limited company information available")
                 
                 # Enhanced price display
@@ -132,22 +153,17 @@ def enhanced_options_page():
                 price_col1.metric("Current Price", f"${S:.2f}", f"{change_pct:+.2f}%")
                 
                 # Add 52-week range if available
-                if 'fiftyTwoWeekHigh' in info and 'fiftyTwoWeekLow' in info:
+                if info and 'fiftyTwoWeekHigh' in info and 'fiftyTwoWeekLow' in info:
                     high_52w = info['fiftyTwoWeekHigh']
                     low_52w = info['fiftyTwoWeekLow']
                     price_col2.metric("52W High", f"${high_52w:.2f}")
                     price_col3.metric("52W Low", f"${low_52w:.2f}")
                 
-                # Historical volatility calculation
-                if len(data) >= 20:
-                    returns = np.log(data['Close'] / data['Close'].shift(1)).dropna()
-                    hist_vol = returns.std() * np.sqrt(252)
+                # Historical volatility display
+                if online_vol_available:
                     st.info(f"📊 Historical Volatility (20-day): {hist_vol:.1%}")
-                
-            except Exception as e:
-                st.error(f"Error fetching data: {str(e)}")
-                S = 100.0  # Default fallback
-                st.warning("Using default price of $100 for demonstration")
+                elif data_source == "Company Search / Ticker":
+                    st.warning("Limited data for volatility calculation")
         
         with col2:
             st.subheader("⚙️ Option Parameters")
@@ -174,8 +190,23 @@ def enhanced_options_page():
             r = st.slider("Risk-free Rate (%)", 0.0, 15.0, 5.0, 0.25,
                          help="Treasury rate for similar maturity") / 100
             
-            sigma = st.slider("Volatility (%)", 5.0, 100.0, 20.0, 2.5,
-                            help="Annual volatility (standard deviation of returns)") / 100
+            # Volatility input with online data integration
+            if data_source == "Company Search / Ticker" and online_vol_available:
+                use_hist_vol = st.checkbox(
+                    f"Use Historical Volatility ({hist_vol:.1%})", 
+                    value=True,
+                    help="Use calculated historical volatility from recent price data"
+                )
+                
+                if use_hist_vol:
+                    sigma = hist_vol
+                    st.success(f"Using historical volatility: {sigma:.1%}")
+                else:
+                    sigma = st.slider("Custom Volatility (%)", 5.0, 100.0, hist_vol*100, 2.5,
+                                    help="Override with custom volatility estimate") / 100
+            else:
+                sigma = st.slider("Volatility (%)", 5.0, 100.0, 20.0, 2.5,
+                                help="Annual volatility (standard deviation of returns)") / 100
     
     # === ENHANCED STRIKE SELECTION ===
     st.subheader("🎯 Strike Price Selection")
