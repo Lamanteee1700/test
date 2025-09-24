@@ -31,31 +31,14 @@ def enhanced_options_page():
             data_source = st.radio("Data Source", ["Company Search / Ticker", "Custom Price"], horizontal=True)
             
             if data_source == "Company Search / Ticker":
-                # Company name to ticker mapping with logo URLs
+                # Company name to ticker mapping
                 popular_companies = {
-                    "Apple": {"ticker": "AAPL", "logo": "https://logo.clearbit.com/apple.com"},
-                    "Microsoft": {"ticker": "MSFT", "logo": "https://logo.clearbit.com/microsoft.com"},
-                    "Google": {"ticker": "GOOGL", "logo": "https://logo.clearbit.com/google.com"},
-                    "Amazon": {"ticker": "AMZN", "logo": "https://logo.clearbit.com/amazon.com"},
-                    "Tesla": {"ticker": "TSLA", "logo": "https://logo.clearbit.com/tesla.com"},
-                    "Meta": {"ticker": "META", "logo": "https://logo.clearbit.com/meta.com"},
-                    "Netflix": {"ticker": "NFLX", "logo": "https://logo.clearbit.com/netflix.com"},
-                    "Nvidia": {"ticker": "NVDA", "logo": "https://logo.clearbit.com/nvidia.com"},
-                    "JPMorgan": {"ticker": "JPM", "logo": "https://logo.clearbit.com/jpmorgan.com"},
-                    "Berkshire": {"ticker": "BRK-B", "logo": "https://logo.clearbit.com/berkshirehathaway.com"},
-                    "Johnson & Johnson": {"ticker": "JNJ", "logo": "https://logo.clearbit.com/jnj.com"},
-                    "Visa": {"ticker": "V", "logo": "https://logo.clearbit.com/visa.com"},
-                    "Procter & Gamble": {"ticker": "PG", "logo": "https://logo.clearbit.com/pg.com"},
-                    "Mastercard": {"ticker": "MA", "logo": "https://logo.clearbit.com/mastercard.com"},
-                    "Disney": {"ticker": "DIS", "logo": "https://logo.clearbit.com/disney.com"},
-                    "Coca Cola": {"ticker": "KO", "logo": "https://logo.clearbit.com/coca-cola.com"},
-                    "McDonald's": {"ticker": "MCD", "logo": "https://logo.clearbit.com/mcdonalds.com"},
-                    "Nike": {"ticker": "NKE", "logo": "https://logo.clearbit.com/nike.com"},
-                    "Intel": {"ticker": "INTC", "logo": "https://logo.clearbit.com/intel.com"},
-                    "Walmart": {"ticker": "WMT", "logo": "https://logo.clearbit.com/walmart.com"},
-                    "Boeing": {"ticker": "BA", "logo": "https://logo.clearbit.com/boeing.com"},
-                    "IBM": {"ticker": "IBM", "logo": "https://logo.clearbit.com/ibm.com"},
-                    "Salesforce": {"ticker": "CRM", "logo": "https://logo.clearbit.com/salesforce.com"}
+                    "Apple": "AAPL", "Microsoft": "MSFT", "Google": "GOOGL", "Amazon": "AMZN",
+                    "Tesla": "TSLA", "Meta": "META", "Netflix": "NFLX", "Nvidia": "NVDA",
+                    "JPMorgan": "JPM", "Berkshire": "BRK-B", "Johnson & Johnson": "JNJ",
+                    "Visa": "V", "Procter & Gamble": "PG", "Mastercard": "MA", "Disney": "DIS",
+                    "Coca Cola": "KO", "McDonald's": "MCD", "Nike": "NKE", "Intel": "INTC",
+                    "Walmart": "WMT", "Boeing": "BA", "IBM": "IBM", "Salesforce": "CRM"
                 }
                 
                 company_name = st.selectbox("Select Company or enter ticker below", 
@@ -63,35 +46,10 @@ def enhanced_options_page():
                                           help="Choose from popular companies or leave blank to enter ticker")
                 
                 if company_name:
-                    ticker = popular_companies[company_name]["ticker"]
-                    logo_url = popular_companies[company_name]["logo"]
-                    
-                    # Display company with logo
-                    col_logo, col_info = st.columns([1, 4])
-                    with col_logo:
-                        try:
-                            st.image(logo_url, width=60)
-                        except:
-                            st.write("🏢")  # Fallback emoji
-                    with col_info:
-                        st.success(f"**{company_name}** ({ticker})")
+                    ticker = popular_companies[company_name]
+                    st.success(f"Selected: {company_name} ({ticker})")
                 else:
                     ticker = st.text_input("Enter ticker symbol:", "AAPL", help="Yahoo Finance ticker symbol")
-                    
-                    # Try to get logo for manually entered ticker
-                    logo_url = None
-                    if ticker and len(ticker) > 0:
-                        try:
-                            # Attempt to fetch company info for logo
-                            test_stock = yf_import.Ticker(ticker)
-                            test_info = test_stock.info
-                            if test_info and 'website' in test_info:
-                                website = test_info['website']
-                                if website:
-                                    domain = website.replace('https://', '').replace('http://', '').replace('www.', '')
-                                    logo_url = f"https://logo.clearbit.com/{domain}"
-                        except:
-                            logo_url = None
                 
                 # Fetch and display stock data with error handling
                 try:
