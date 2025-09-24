@@ -11,6 +11,8 @@ from utils import bs_price, greeks, d1, d2
 import feedparser
 import requests
 import random
+from mistralai import Mistral
+import os
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -203,69 +205,65 @@ def main():
     # --- Japanese Market News Section (Mistral AI Summarized) ---
     
     MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
-    MISTRAL_URL = "https://api.mistral.ai/v1/generate"
     
-    
-    # Liste des sources RSS japonaises pour les marchés financiers
+    # Configuration
     JAPANESE_FINANCIAL_RSS_FEEDS = [
-        "https://news.yahoo.co.jp/rss/topics/business.xml",  # Yahoo Japan Finance
-        "https://asia.nikkei.com/rss",                      # Nikkei Asian Review
-        "https://www.japantimes.co.jp/feed/business/",      # Japan Times Business
-        "https://jp.reuters.com/tools/rss",                # Reuters Japan
+        "https://news.yahoo.co.jp/rss/topics/business.xml",      # Yahoo Japan Finance
+        "https://asia.nikkei.com/rss",                         # Nikkei Asian Review
+        "https://www.japantimes.co.jp/feed/business/",         # Japan Times Business
+        "https://jp.reuters.com/tools/rss",                   # Reuters Japan
     ]
     
+    # Cache pour les news et les résumés
     @st.cache_data(show_spinner=False)
     def fetch_news_rss(rss_url=None, top_n=10):
         if rss_url is None:
-            rss_url = random.choice(JAPANESE_FINANCIAL_RSS_FEEDS)
+            rss_url = JAPANESE_FINANCIAL_RSS_FEEDS[0]  # Par défaut, Yahoo Japan
         feed = feedparser.parse(rss_url)
         return feed.entries[:top_n]
     
-    @st.cache_data(show_spinner=False)
     def summarize_news_mistral(title, summary=""):
         prompt = f"Summarize this Japanese financial news in 2-3 sentences, keeping the key points:\nTitle: {title}\nSummary: {summary}"
-        headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}"}
-        payload = {
-            "model": "mistral-large",
-            "prompt": prompt,
-            "max_tokens": 200
-        }
-        try:
-            response = requests.post(MISTRAL_URL, headers=headers, json=payload, timeout=10)
-            if response.status_code == 200:
-                result = response.json()
-                if "text" in result:
-                    return result["text"].strip()
-                else:
-                    return "Summary unavailable"
-            else:
-                return f"API Error: {response.status_code}"
-        except requests.exceptions.RequestException as e:
-            return f"Network error: {str(e)}"
-        except Exception as e:
-            return f"Unexpected error: {str(e)}"
     
-    # Fetch latest news
-    news_items = []
-    for feed_url in JAPANESE_FINANCIAL_RSS_FEEDS:
         try:
-            news_items.extend(fetch_news_rss(feed_url, top_n=3))
+            client = Mistral(api_key=st.secrets["MISTRAL_API_KEY"])
+            chat_response = client.chat.complete(
+                model="mistral-small-latest",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return chat_response.choices[0].message.content.strip()
         except Exception as e:
-            st.warning(f"Could not fetch news from {feed_url}: {str(e)}")
+            return f"Summary unavailable: {str(e)}"
     
-    # Display in Streamlit
-    st.subheader("📰 Japanese Market News (AI-Summarized)")
+    # Interface Streamlit
+    st.title("📰 Japanese Market News (AI-Summarized)")
+    st.markdown("Latest financial news from Japan, summarized by Mistral AI.")
+    
+    # Sélection de la source RSS
+    source = st.selectbox(
+        "Select news source:",
+        ["Yahoo Japan", "Nikkei Asian Review", "Japan Times", "Reuters Japan"],
+        index=0
+    )
+    rss_url = JAPANESE_FINANCIAL_RSS_FEEDS[
+        ["Yahoo Japan", "Nikkei Asian Review", "Japan Times", "Reuters Japan"].index(source)
+    ]
+    
+    # Récupération et affichage des news
+    news_items = fetch_news_rss(rss_url, top_n=5)  # 5 news max par source
     
     if news_items:
-        for entry in news_items[:15]:
+        for entry in news_items:
             title = entry.title
             summary_text = getattr(entry, "summary", "")
             ai_summary = summarize_news_mistral(title, summary_text)
     
-            st.markdown(f"- [{title}]({entry.link})")
-            st.markdown(f"  *{ai_summary}*")
+            with st.expander(f"**{title}**"):
+                st.markdown(f"[Read full article]({entry.link})")
+                st.markdown(f"**AI Summary:** {ai_summary}")
     else:
-        st.info("No news available at the moment.")
-    
+            st.info("No news available at the moment.")
+
+
 if __name__ == "__main__":
     main()
