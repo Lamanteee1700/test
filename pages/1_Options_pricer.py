@@ -71,60 +71,60 @@ def enhanced_options_page():
                 change_pct = (S - prev_close) / prev_close * 100
                 
                 # Company Information Display
-                if info:
-                    company_name = info.get('longName', ticker)
+                if info and len(info) > 5:  # Ensure we have substantial company data
+                    company_name = info.get('longName', info.get('shortName', ticker))
                     sector = info.get('sector', 'N/A')
                     industry = info.get('industry', 'N/A')
                     market_cap = info.get('marketCap', 0)
                     
-                    st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #007bff; margin: 10px 0;">
-                    <h4 style="margin: 0; color: #007bff;">{company_name} ({ticker})</h4>
-                    <p style="margin: 5px 0;"><strong>Sector:</strong> {sector} | <strong>Industry:</strong> {industry}</p>
-                    {f'<p style="margin: 5px 0;"><strong>Market Cap:</strong> ${market_cap/1e9:.1f}B</p>' if market_cap > 0 else ''}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Add business summary if available (truncated)
-                    if 'longBusinessSummary' in info and info['longBusinessSummary']:
-                        summary = info['longBusinessSummary']
-                        if len(summary) > 200:
-                            summary = summary[:200] + "..."
+                    # Only display company info if we have meaningful data
+                    if company_name and company_name != ticker:
+                        st.markdown(f"""
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #007bff; margin: 10px 0;">
+                        <h4 style="margin: 0; color: #007bff;">{company_name} ({ticker})</h4>
+                        {f'<p style="margin: 5px 0;"><strong>Sector:</strong> {sector}' + (f' | <strong>Industry:</strong> {industry}' if industry != 'N/A' else '') + '</p>' if sector != 'N/A' or industry != 'N/A' else ''}
+                        {f'<p style="margin: 5px 0;"><strong>Market Cap:</strong> ${market_cap/1e9:.1f}B</p>' if market_cap > 1e9 else f'<p style="margin: 5px 0;"><strong>Market Cap:</strong> ${market_cap/1e6:.0f}M</p>' if market_cap > 1e6 else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        with st.expander("📋 Company Overview"):
-                            st.write(summary)
+                        # Add business summary if available (truncated)
+                        if 'longBusinessSummary' in info and info['longBusinessSummary']:
+                            summary = info['longBusinessSummary']
+                            if len(summary) > 250:
+                                summary = summary[:250] + "..."
                             
-                            # Additional company metrics
-                            metrics_data = []
-                            metric_fields = {
-                                'Employees': 'fullTimeEmployees',
-                                'Founded': 'industryDisruptors',
-                                'CEO': 'companyOfficers',
-                                'Revenue (TTM)': 'totalRevenue',
-                                'P/E Ratio': 'trailingPE',
-                                'Beta': 'beta'
-                            }
-                            
-                            for label, field in metric_fields.items():
-                                if field in info and info[field]:
-                                    value = info[field]
-                                    if field == 'totalRevenue' and value:
-                                        value = f"${value/1e9:.1f}B"
-                                    elif field == 'fullTimeEmployees' and value:
-                                        value = f"{value:,}"
-                                    elif field == 'trailingPE' and value:
-                                        value = f"{value:.1f}"
-                                    elif field == 'beta' and value:
-                                        value = f"{value:.2f}"
-                                    elif field == 'companyOfficers' and isinstance(value, list) and len(value) > 0:
-                                        value = value[0].get('name', 'N/A')
-                                    
-                                    if value != 'N/A' and value:
-                                        metrics_data.append({"Metric": label, "Value": value})
-                            
-                            if metrics_data:
-                                metrics_df = pd.DataFrame(metrics_data)
-                                st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+                            with st.expander(f"📋 About {company_name}"):
+                                st.write(summary)
+                                
+                                # Additional company metrics in a clean table
+                                metrics_data = []
+                                
+                                # Core financial metrics
+                                if info.get('fullTimeEmployees'):
+                                    metrics_data.append({"Metric": "Employees", "Value": f"{info['fullTimeEmployees']:,}"})
+                                
+                                if info.get('totalRevenue'):
+                                    revenue = info['totalRevenue']
+                                    if revenue > 1e9:
+                                        metrics_data.append({"Metric": "Revenue (TTM)", "Value": f"${revenue/1e9:.1f}B"})
+                                    else:
+                                        metrics_data.append({"Metric": "Revenue (TTM)", "Value": f"${revenue/1e6:.0f}M"})
+                                
+                                if info.get('trailingPE') and info['trailingPE'] > 0:
+                                    metrics_data.append({"Metric": "P/E Ratio", "Value": f"{info['trailingPE']:.1f}"})
+                                
+                                if info.get('beta'):
+                                    metrics_data.append({"Metric": "Beta", "Value": f"{info['beta']:.2f}"})
+                                
+                                if info.get('dividendYield'):
+                                    metrics_data.append({"Metric": "Dividend Yield", "Value": f"{info['dividendYield']:.2%}"})
+                                
+                                if metrics_data:
+                                    metrics_df = pd.DataFrame(metrics_data)
+                                    st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+                    else:
+                        # Fallback for minimal company info
+                        st.info(f"📊 Analyzing: **{ticker}** - Limited company information available")
                 
                 # Enhanced price display
                 price_col1, price_col2, price_col3 = st.columns(3)
