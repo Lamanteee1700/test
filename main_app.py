@@ -250,53 +250,25 @@ def main():
         except Exception as e:
             return f"Summary unavailable: {str(e)}"
     
-   
-    # --- Section Header ---
+    # --- Streamlit Interface ---
     st.subheader("📰 Japanese Market News (AI-Summarized)")
-    st.markdown("""
-    Latest financial news from **Yahoo Japan media sources**, merged and summarized by **Mistral AI**.  
-    *Free tier, limited requests — summaries may take a few seconds.*
-    """)
+    st.markdown(
+        "Latest financial news from Japanese Yahoo Japan media sources, merged and summarized by Mistral AI Experiment* "
+        "(*free tier, limited requests)."
+    )
     
-    # Display sources with descriptions
+    # Display sources and description
     st.markdown("**Sources included:**")
     for src, desc in RSS_DESCRIPTIONS.items():
-        st.markdown(
-            f"<div style='padding:3px 0;'><strong>{src}</strong>: <span style='color:#555'>{desc}</span></div>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"- **{src}**: {desc}")
     
     # Fetch and merge feeds
     news_items = fetch_news_rss(list(JAPANESE_FINANCIAL_RSS_FEEDS.values()), top_n=30)
     
+    # Generate AI summary
     if news_items:
         ai_summary = summarize_news_mistral(news_items)
-    
-        # Split AI output into articles
-        articles = ai_summary.split("\n\n")  # assumes AI separates articles with double line breaks
-    
-        # Display in two columns
-        for i in range(0, len(articles), 2):
-            cols = st.columns(2)
-            for j, col in enumerate(cols):
-                if i + j < len(articles):
-                    article = articles[i + j]
-                    # Simple icon detection (optional)
-                    icon = "📈" if "株" in article or "市場" in article else "🏢"
-                    col.markdown(
-                        f"""
-                        <div style='
-                            background: linear-gradient(135deg, #e0f7fa, #ffffff);
-                            border-radius: 15px;
-                            padding: 15px;
-                            margin-bottom: 10px;
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                        '>
-                            <div style='font-size:18px;'>{icon} {article.replace('\n', '<br>')}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+        st.markdown(ai_summary)
     else:
         st.info("No news available at the moment.")
 
