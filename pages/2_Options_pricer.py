@@ -28,7 +28,7 @@ def enhanced_options_page():
             st.subheader("📈 Market Data")
             
             # Price data source selection
-            data_source = st.radio("Data Source", ["Company Search / Ticker", "Custom Price"], horizontal=True)
+            data_source = st.radio("Data Source", ["Company Search / Ticker", "Create Your Own"], horizontal=True)
             
             if data_source == "Company Search / Ticker":
                 # Company name to ticker mapping
@@ -140,7 +140,8 @@ def enhanced_options_page():
                                     metrics_data.append({"Metric": "Beta", "Value": f"{info['beta']:.2f}"})
                                 
                                 if info.get('dividendYield'):
-                                    metrics_data.append({"Metric": "Dividend Yield", "Value": f"{info['dividendYield']:.2%}"})
+                                    metrics_data.append({"Metric": "Dividend Yield", "Value": f"{info['dividendYield']:.2f}%"})
+
                                 
                                 if metrics_data:
                                     metrics_df = pd.DataFrame(metrics_data)
@@ -187,7 +188,7 @@ def enhanced_options_page():
                 st.info(f"Days to expiry: {T_days}")
             
             # Market environment inputs
-            r = st.slider("Risk-free Rate (%)", 0.0, 15.0, 5.0, 0.25,
+            r = st.slider("Risk-free Rate (%)", 0.0, 15.0, 5.0, 0.01,
                          help="Treasury rate for similar maturity") / 100
             
             # Volatility input with online data integration
@@ -237,7 +238,7 @@ def enhanced_options_page():
             K = st.number_input("Strike Price ($)", value=float(S), min_value=0.01, step=0.01)
             
         else:  # Moneyness %
-            moneyness_pct = st.slider("Moneyness (%)", 70, 130, 100, 1,
+            moneyness_pct = st.slider("Moneyness (%)", 25, 175, 100, 1,
                                     help="Strike as % of current price")
             K = S * (moneyness_pct / 100)
     
