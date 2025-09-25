@@ -8,11 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 from utils import bs_price, greeks, d1, d2
-import feedparser
-import requests
-import random
-from mistralai import Mistral
-import os
+
 
 # --- Page Configuration ---
 st.set_page_config(
