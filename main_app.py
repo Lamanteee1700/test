@@ -1,3 +1,12 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+import yfinance as yf
+from datetime import datetime, timedelta
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+
 # --- Sidebar with LinkedIn ---
 with st.sidebar:
     st.markdown("---")
@@ -18,14 +27,8 @@ st.markdown("""
     <strong>🧭 Quick Navigation:</strong> Use the sidebar to explore our comprehensive financial tools, 
     from basic option pricing to advanced institutional risk management frameworks.
 </div>
-""", unsafe_allow_html=True)import streamlit as st
-import numpy as np
-import pandas as pd
-import yfinance as yf
-from datetime import datetime, timedelta
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
+""", unsafe_allow_html=True)
+
 
 # --- Page Configuration ---
 st.set_page_config(
