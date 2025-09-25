@@ -482,7 +482,7 @@ def enhanced_options_page():
         max_loss_idx = np.argmin(option_pnl)
         
         pnl_col1, pnl_col2, pnl_col3 = st.columns(3)
-        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < price*2 else "Unlimited")
+        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < (price+1) else "Unlimited")
         pnl_col2.metric("Max Loss", f"${min(option_pnl):.2f}")
         pnl_col3.metric("Prob. of Profit", f"{np.mean(np.array(option_pnl) > 0)*100:.1f}%")
     
