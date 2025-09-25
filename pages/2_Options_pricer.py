@@ -291,7 +291,7 @@ def options_page():
     
     with metric_cols[0]:
         st.metric("Option Price", f"${price:.3f}", 
-                 help=f"Theoretical {option_type} option value")
+                 help=f"Theoretical {option_type} option value calculated under the Black-Scholes framework")
     
     with metric_cols[1]:
         st.metric("Intrinsic Value", f"${intrinsic:.3f}",
@@ -304,8 +304,8 @@ def options_page():
     with metric_cols[3]:
         leverage = (delta * S) / price if price > 0.001 else 0
         st.metric("Leverage", f"{leverage:.1f}x",
-                 help="Effective leverage vs. owning stock")
-    
+                 help="Effective leverage of the option vs. owning the underlying stock")
+        
     with metric_cols[4]:
         breakeven = K + price if option_type == 'call' else K - price
         st.metric("Breakeven", f"${breakeven:.2f}",
