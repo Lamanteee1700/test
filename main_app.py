@@ -1,4 +1,24 @@
-import streamlit as st
+# --- Sidebar with LinkedIn ---
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 👤 Developer")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem;">
+        <a href="https://www.linkedin.com/in/c%C3%B4me-kasai-campagnolo-765b39244/" target="_blank" 
+           style="display: inline-block; background: #0077B5; color: white; padding: 0.5rem 1rem; 
+                  border-radius: 5px; text-decoration: none; font-weight: 500;">
+            🔗 LinkedIn Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- Navigation hint ---
+st.markdown("""
+<div class="navigation-hint">
+    <strong>🧭 Quick Navigation:</strong> Use the sidebar to explore our comprehensive financial tools, 
+    from basic option pricing to advanced institutional risk management frameworks.
+</div>
+""", unsafe_allow_html=True)import streamlit as st
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -121,6 +141,10 @@ st.markdown("""
         Professional suite of tools for derivatives analysis, portfolio construction, 
         and institutional risk management
     </p>
+    <div style="background: rgba(255,193,7,0.2); padding: 0.8rem; border-radius: 8px; margin-top: 1rem;">
+        <strong>⚠️ Work in Progress:</strong> This platform is currently under active development. 
+        Features are being continuously improved and expanded.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -130,9 +154,11 @@ def get_market_data():
     try:
         tickers = {
             "S&P 500": "^GSPC",
-            "VIX": "^VIX",
+            "VIX": "^VIX", 
             "10Y Treasury": "^TNX",
-            "USD/EUR": "EURUSD=X"
+            "USD/JPY": "USDJPY=X",
+            "Nikkei 225": "^N225",
+            "JPY 10Y Bond": "^TNX"  # Placeholder for Japan 10Y
         }
         
         market_data = {}
@@ -153,7 +179,9 @@ def get_market_data():
             "S&P 500": {"value": 4500, "change": 0.5},
             "VIX": {"value": 18.5, "change": -2.1},
             "10Y Treasury": {"value": 4.25, "change": 0.1},
-            "USD/EUR": {"value": 1.085, "change": 0.3}
+            "USD/JPY": {"value": 148.5, "change": 0.3},
+            "Nikkei 225": {"value": 38500, "change": 1.2},
+            "JPY 10Y Bond": {"value": 1.1, "change": 0.05}
         }
 
 # --- Market Overview ---
@@ -161,7 +189,8 @@ st.subheader("📊 Live Market Overview")
 
 market_data = get_market_data()
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
+col4, col5, col6 = st.columns(3)
 
 with col1:
     sp_data = market_data["S&P 500"]
@@ -176,10 +205,30 @@ with col3:
     col3.metric("10Y US Treasury", f"{treasury_data['value']:.2f}%", f"{treasury_data['change']:+.2f}%")
 
 with col4:
-    eur_data = market_data["USD/EUR"]
-    col4.metric("USD/EUR", f"{eur_data['value']:.3f}", f"{eur_data['change']:+.2f}%")
+    jpy_data = market_data["USD/JPY"]
+    col4.metric("USD/JPY", f"{jpy_data['value']:.1f}", f"{jpy_data['change']:+.2f}%")
 
-# --- Navigation hint ---
+with col5:
+    nikkei_data = market_data["Nikkei 225"]
+    col5.metric("Nikkei 225", f"{nikkei_data['value']:.0f}", f"{nikkei_data['change']:+.2f}%")
+
+with col6:
+    jpy_bond_data = market_data["JPY 10Y Bond"]
+    col6.metric("JPY 10Y Bond", f"{jpy_bond_data['value']:.2f}%", f"{jpy_bond_data['change']:+.2f}%")
+
+# --- Sidebar with LinkedIn ---
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 👤 Developer")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem;">
+        <a href="https://www.linkedin.com/in/c%C3%B4me-kasai-campagnolo-765b39244/" target="_blank" 
+           style="display: inline-block; background: #0077B5; color: white; padding: 0.5rem 1rem; 
+                  border-radius: 5px; text-decoration: none; font-weight: 500;">
+            🔗 LinkedIn Profile
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 st.markdown("""
 <div class="navigation-hint">
     <strong>🧭 Quick Navigation:</strong> Use the sidebar to explore our comprehensive financial tools, 
@@ -210,7 +259,7 @@ with tab_derivatives:
             <div class="feature-description">
                 Black-Scholes model with live market data integration, 
                 comprehensive Greeks analysis, sensitivity testing, 
-                and market price comparison capabilities.
+                and market price comparison.
                 <br><br>
                 <strong>Key Features:</strong>
                 <ul>
@@ -380,40 +429,71 @@ with tab_markets:
         </div>
         """, unsafe_allow_html=True)
 
-# --- Platform statistics ---
-st.subheader("📊 Platform Statistics")
+# --- Upcoming Features ---
+st.subheader("🚀 Coming Soon")
 
-stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+upcoming_col1, upcoming_col2, upcoming_col3 = st.columns(3)
 
-with stats_col1:
+with upcoming_col1:
     st.markdown("""
-    <div class="highlight-metric">
-        <h3>12+</h3>
-        <p>Analysis Tools</p>
+    <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h4 class="feature-title">Fixed Income Strategies</h4>
+        <div class="feature-description">
+            Comprehensive fixed income portfolio construction 
+            with yield curve modeling, duration management, 
+            and credit risk analysis.
+            <br><br>
+            <strong>Coming Features:</strong>
+            <ul>
+                <li>Bond portfolio optimization</li>
+                <li>Yield curve strategies</li>
+                <li>Credit spread analysis</li>
+                <li>Duration hedging</li>
+            </ul>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-with stats_col2:
+with upcoming_col2:
     st.markdown("""
-    <div class="highlight-metric">
-        <h3>5+</h3>
-        <p>Asset Classes</p>
+    <div class="feature-card">
+        <span class="feature-icon">🏗️</span>
+        <h4 class="feature-title">Commodities Trading</h4>
+        <div class="feature-description">
+            Advanced commodities analysis with futures 
+            pricing models, seasonality patterns, and 
+            supply-demand dynamics.
+            <br><br>
+            <strong>Coming Features:</strong>
+            <ul>
+                <li>Futures curve modeling</li>
+                <li>Seasonality analysis</li>
+                <li>Storage cost models</li>
+                <li>Spread strategies</li>
+            </ul>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-with stats_col3:
+with upcoming_col3:
     st.markdown("""
-    <div class="highlight-metric">
-        <h3>Real-time</h3>
-        <p>Market Data</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with stats_col4:
-    st.markdown("""
-    <div class="highlight-metric">
-        <h3>24/7</h3>
-        <p>Availability</p>
+    <div class="feature-card">
+        <span class="feature-icon">🧮</span>
+        <h4 class="feature-title">Advanced Models</h4>
+        <div class="feature-description">
+            Next-generation quantitative models including 
+            Monte Carlo simulations, Jump Diffusion, 
+            and stochastic volatility frameworks.
+            <br><br>
+            <strong>Coming Models:</strong>
+            <ul>
+                <li>Monte Carlo pricing</li>
+                <li>Jump Diffusion models</li>
+                <li>Stochastic volatility</li>
+                <li>Exotic derivatives</li>
+            </ul>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -428,22 +508,11 @@ with st.expander("🧭 Navigation Guide", expanded=False):
     
     **3. Advanced:** Use **Structured Products** and **Credit Risk** tools for institutional-grade analysis.
     
-    **4. Market Intelligence:** Stay informed with **Japanese Financial News** powered by AI.
-    
     ### Key Features:
     - **Real-time data** via Yahoo Finance API
     - **Interactive visualizations** with Plotly
     - **Academic models** (Black-Scholes, Merton, etc.)
-    - **Institutional use cases** (banks, funds, insurance)
     - **Professional interface** designed for practitioners
-    
-    ### Recommended Learning Path:
-    1. **Options Pricer** → Understanding derivatives fundamentals
-    2. **Volatility Strategies** → Advanced option strategies  
-    3. **Greeks Hedging** → Risk management techniques
-    4. **Swaps Pricer** → Fixed income analytics
-    5. **Credit Risk** → Portfolio risk management
-    6. **Structured Products** → Complex instrument design
     """)
 
 # --- Technologies & methodologies ---
@@ -475,41 +544,6 @@ with st.expander("⚙️ Technologies & Methodologies", expanded=False):
         - **Factor Models** - Portfolio construction
         """)
 
-# --- Use cases by institution type ---
-with st.expander("🏛️ Institutional Use Cases", expanded=False):
-    
-    usecase_col1, usecase_col2 = st.columns(2)
-    
-    with usecase_col1:
-        st.markdown("""
-        **Investment Banks:**
-        - Options market making and pricing
-        - Structured products design
-        - Risk management and hedging
-        - Regulatory capital calculations
-        
-        **Asset Managers:**
-        - Portfolio optimization
-        - Risk budgeting and attribution
-        - Factor exposure analysis
-        - Performance measurement
-        """)
-    
-    with usecase_col2:
-        st.markdown("""
-        **Insurance Companies:**
-        - Asset-liability matching
-        - Solvency II compliance
-        - Credit risk assessment
-        - Structured product evaluation
-        
-        **Pension Funds:**
-        - Long-term portfolio construction
-        - Interest rate risk hedging
-        - Alternative investment analysis
-        - ESG integration
-        """)
-
 # --- Professional footer ---
 st.markdown("---")
 st.markdown("""
@@ -527,8 +561,3 @@ st.markdown("""
     </div>
 </div>
 """.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
-
-# --- Welcome animation (optional) ---
-if 'first_visit' not in st.session_state:
-    st.session_state.first_visit = True
-    st.balloons()
