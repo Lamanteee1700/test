@@ -246,115 +246,137 @@ def show_equity_fundamentals_page():
         
         st.dataframe(multiples_data, use_container_width=True)
     
-    # === PORTFOLIO CONSTRUCTION SIMULATION ===
-    st.subheader("🎯 Portfolio Construction Simulation")
+    # === INSTITUTIONAL PORTFOLIO CONSTRUCTION SIMULATION ===
+    st.subheader("🎯 Institutional Portfolio Construction Simulation")
     
     st.markdown("""
-    **Step-by-step equity portfolio construction** - Each step builds on the previous to create a realistic portfolio 
-    with clear rationale and implications.
+    **Step-by-step institutional equity portfolio construction** - Each step demonstrates how institutional investors 
+    build large-scale equity portfolios with sophisticated risk management and implementation strategies.
     """)
     
-    portfolio_steps = st.tabs(["Step 1: Define Objectives", "Step 2: Risk Assessment", "Step 3: Asset Allocation", "Step 4: Security Selection"])
+    portfolio_steps = st.tabs(["Step 1: Define Mandate", "Step 2: Risk Budget", "Step 3: Strategic Allocation", "Step 4: Implementation"])
     
     with portfolio_steps[0]:
-        st.markdown("### Step 1: Define Investment Objectives")
+        st.markdown("### Step 1: Define Investment Mandate")
         
         obj_col1, obj_col2 = st.columns(2)
         
         with obj_col1:
-            st.markdown("**Investor Profile Selection:**")
-            investor_type = st.selectbox("Choose Investor Profile:", 
-                ["Young Professional (25-35)", "Mid-Career (35-50)", "Pre-Retirement (50-65)", "Retiree (65+)"])
+            st.markdown("**Institution Type Selection:**")
+            institution_type = st.selectbox("Choose Institution Type:", 
+                ["Corporate Pension Fund", "Public Pension Fund", "University Endowment", "Insurance Company", "Sovereign Wealth Fund"])
             
-            investment_goal = st.selectbox("Primary Goal:", 
-                ["Long-term Growth", "Growth with Income", "Income with Preservation", "Capital Preservation"])
+            mandate_objective = st.selectbox("Primary Mandate:", 
+                ["Growth + Income", "Liability Matching", "Absolute Return", "Capital Preservation", "Intergenerational Equity"])
             
-            time_horizon = st.slider("Investment Horizon (years):", 5, 40, 20)
+            aum_size = st.selectbox("Assets Under Management:", 
+                ["$1-5 Billion", "$5-20 Billion", "$20-100 Billion", "$100B+"])
+            
+            time_horizon = st.selectbox("Investment Horizon:", 
+                ["10-15 years", "15-25 years", "25+ years (perpetual)", "Variable (liability-driven)"])
         
         with obj_col2:
-            # Set profile defaults
-            profiles = {
-                "Young Professional (25-35)": {"risk": "High", "liquidity": "Low", "tax": "High bracket"},
-                "Mid-Career (35-50)": {"risk": "Moderate-High", "liquidity": "Medium", "tax": "High bracket"},
-                "Pre-Retirement (50-65)": {"risk": "Moderate", "liquidity": "Medium", "tax": "Medium bracket"},
-                "Retiree (65+)": {"risk": "Low-Moderate", "liquidity": "High", "tax": "Lower bracket"}
+            # Set institutional profile defaults
+            institutional_profiles = {
+                "Corporate Pension Fund": {"risk_tolerance": "Moderate", "liquidity": "Medium", "governance": "Corporate Board", "constraint": "ERISA compliance"},
+                "Public Pension Fund": {"risk_tolerance": "Moderate-High", "liquidity": "Medium", "governance": "Board of Trustees", "constraint": "Political oversight"},
+                "University Endowment": {"risk_tolerance": "High", "liquidity": "Low-Medium", "governance": "Investment Committee", "constraint": "Spending rate targets"},
+                "Insurance Company": {"risk_tolerance": "Low-Moderate", "liquidity": "High", "governance": "Risk Committee", "constraint": "Regulatory capital"},
+                "Sovereign Wealth Fund": {"risk_tolerance": "High", "liquidity": "Low", "governance": "Government Board", "constraint": "Political/Strategic"}
             }
             
-            profile = profiles[investor_type]
+            profile = institutional_profiles[institution_type]
             
             st.markdown(f"""
-            **Derived Characteristics:**
-            - **Risk Tolerance:** {profile['risk']}
-            - **Liquidity Needs:** {profile['liquidity']}
-            - **Tax Situation:** {profile['tax']}
-            - **Time Horizon:** {time_horizon} years
-            - **Primary Goal:** {investment_goal}
+            **Institutional Characteristics:**
+            - **Risk Tolerance:** {profile['risk_tolerance']}
+            - **Liquidity Requirements:** {profile['liquidity']}
+            - **Governance Structure:** {profile['governance']}
+            - **Key Constraint:** {profile['constraint']}
+            - **Time Horizon:** {time_horizon}
+            - **AUM Size:** {aum_size}
             """)
             
             # Store selections in session state
-            st.session_state.investor_profile = {
-                'type': investor_type,
-                'goal': investment_goal,
+            st.session_state.institution_profile = {
+                'type': institution_type,
+                'mandate': mandate_objective,
+                'aum': aum_size,
                 'horizon': time_horizon,
-                'risk': profile['risk'],
-                'liquidity': profile['liquidity']
+                'risk_tolerance': profile['risk_tolerance'],
+                'liquidity': profile['liquidity'],
+                'governance': profile['governance']
             }
     
     with portfolio_steps[1]:
-        st.markdown("### Step 2: Risk Assessment & Capacity")
+        st.markdown("### Step 2: Risk Budget & Constraints")
         
-        if 'investor_profile' in st.session_state:
-            profile = st.session_state.investor_profile
+        if 'institution_profile' in st.session_state:
+            profile = st.session_state.institution_profile
             
             risk_col1, risk_col2 = st.columns(2)
             
             with risk_col1:
-                st.markdown("**Risk Tolerance Evaluation:**")
+                st.markdown("**Risk Budget Framework:**")
                 
-                market_drop = st.selectbox("If your portfolio dropped 30% in 6 months, you would:",
-                    ["Panic and sell everything", "Be very concerned but hold", "Stay calm and maybe buy more", "Definitely buy more - great opportunity"])
+                tracking_error = st.selectbox("Target Tracking Error vs Benchmark:",
+                    ["1-2% (Conservative)", "2-4% (Moderate)", "4-6% (Active)", "6%+ (Aggressive)"])
                 
-                volatility_comfort = st.selectbox("Annual portfolio volatility you can accept:",
-                    ["Under 5%", "5-10%", "10-20%", "Over 20%"])
+                var_limit = st.selectbox("Value-at-Risk (95% confidence, monthly):",
+                    ["2-3%", "3-5%", "5-8%", "8%+"])
                 
-                loss_tolerance = st.selectbox("Maximum loss you could accept in worst year:",
-                    ["Under 5%", "5-15%", "15-30%", "Over 30%"])
+                concentration_limit = st.selectbox("Maximum Single Position:",
+                    ["2%", "3%", "5%", "No limit"])
+                
+                sector_limit = st.selectbox("Maximum Sector Concentration:",
+                    ["Index weight + 3%", "Index weight + 5%", "Index weight + 8%", "No sector limits"])
             
             with risk_col2:
-                # Calculate risk score
-                risk_scores = {
-                    "Panic and sell everything": 1, "Be very concerned but hold": 2,
-                    "Stay calm and maybe buy more": 3, "Definitely buy more - great opportunity": 4
-                }
-                volatility_scores = {"Under 5%": 1, "5-10%": 2, "10-20%": 3, "Over 20%": 4}
-                loss_scores = {"Under 5%": 1, "5-15%": 2, "15-30%": 3, "Over 30%": 4}
+                # Calculate institutional risk profile
+                te_scores = {"1-2% (Conservative)": 1, "2-4% (Moderate)": 2, "4-6% (Active)": 3, "6%+ (Aggressive)": 4}
+                var_scores = {"2-3%": 1, "3-5%": 2, "5-8%": 3, "8%+": 4}
+                conc_scores = {"2%": 1, "3%": 2, "5%": 3, "No limit": 4}
                 
-                total_score = risk_scores[market_drop] + volatility_scores[volatility_comfort] + loss_scores[loss_tolerance]
+                risk_score = te_scores[tracking_error] + var_scores[var_limit] + conc_scores[concentration_limit]
                 
-                if total_score <= 6:
-                    risk_profile = "Conservative"
-                    equity_range = "20-40%"
-                elif total_score <= 9:
-                    risk_profile = "Moderate"
-                    equity_range = "40-70%"
+                if risk_score <= 6:
+                    strategy_type = "Core/Passive"
+                    equity_target = "45-55%"
+                elif risk_score <= 9:
+                    strategy_type = "Core-Plus/Enhanced"  
+                    equity_target = "50-70%"
                 else:
-                    risk_profile = "Aggressive"
-                    equity_range = "70-90%"
+                    strategy_type = "Active/Satellite"
+                    equity_target = "60-80%"
+                
+                # Regulatory constraints based on institution type
+                if profile['type'] == "Insurance Company":
+                    regulatory_note = "Solvency II capital requirements limit equity allocation"
+                elif profile['type'] == "Corporate Pension Fund":
+                    regulatory_note = "ERISA fiduciary standards require prudent diversification"  
+                elif profile['type'] == "Public Pension Fund":
+                    regulatory_note = "State regulations may limit alternative investments"
+                else:
+                    regulatory_note = "Minimal regulatory constraints"
                 
                 st.markdown(f"""
                 **Risk Assessment Results:**
-                - **Risk Score:** {total_score}/12
-                - **Risk Profile:** {risk_profile}
-                - **Suggested Equity Range:** {equity_range}
-                - **Investment Horizon:** {profile['horizon']} years
+                - **Risk Budget Score:** {risk_score}/12
+                - **Strategy Classification:** {strategy_type}
+                - **Target Equity Range:** {equity_target}
+                - **Tracking Error Budget:** {tracking_error}
+                - **Regulatory Constraint:** {regulatory_note}
                 """)
                 
                 st.session_state.risk_assessment = {
-                    'score': total_score,
-                    'profile': risk_profile,
-                    'equity_range': equity_range
+                    'score': risk_score,
+                    'strategy': strategy_type,
+                    'equity_target': equity_target,
+                    'tracking_error': tracking_error,
+                    'var_limit': var_limit
                 }
-    
+
+
     with portfolio_steps[2]:
         st.markdown("### Step 3: Strategic Asset Allocation")
         
@@ -362,73 +384,98 @@ def show_equity_fundamentals_page():
             allocation_col1, allocation_col2 = st.columns(2)
             
             with allocation_col1:
-                st.markdown("**Asset Allocation Framework:**")
+                st.markdown("**Strategic Asset Allocation Framework:**")
                 
-                # Base allocation on risk assessment
-                risk_profile = st.session_state.risk_assessment['profile']
+                # Base allocation on institutional risk profile
+                strategy_type = st.session_state.risk_assessment['strategy']
                 
-                if risk_profile == "Conservative":
-                    default_equity = 30
-                elif risk_profile == "Moderate":
+                if strategy_type == "Core/Passive":
+                    default_equity = 50
+                elif strategy_type == "Core-Plus/Enhanced":
                     default_equity = 60
                 else:
-                    default_equity = 80
+                    default_equity = 70
                 
-                equity_allocation = st.slider("Equity Allocation (%)", 0, 100, default_equity, 5)
-                bond_allocation = 100 - equity_allocation
+                equity_allocation = st.slider("Public Equity Allocation (%)", 30, 80, default_equity, 5)
+                
+                # Institutional-specific allocations
+                private_equity = st.slider("Private Equity (%)", 0, 25, 10)
+                real_estate = st.slider("Real Estate (%)", 0, 15, 8)
+                fixed_income = st.slider("Fixed Income (%)", 10, 40, 25)
+                alternatives = 100 - equity_allocation - private_equity - real_estate - fixed_income
                 
                 st.markdown(f"""
-                **Proposed Allocation:**
-                - **Equities:** {equity_allocation}%
-                - **Bonds:** {bond_allocation}%
+                **Institutional Asset Allocation:**
+                - **Public Equity:** {equity_allocation}%
+                - **Private Equity:** {private_equity}%
+                - **Real Estate:** {real_estate}%
+                - **Fixed Income:** {fixed_income}%
+                - **Alternatives/Cash:** {alternatives}%
                 """)
             
             with allocation_col2:
-                # Asset class expected returns (source: research institutions)
-                st.markdown("**Expected Returns & Volatility:**")
+                # Institutional-grade expected returns and risk metrics
+                st.markdown("**Expected Returns & Risk (10-Year Forward):**")
                 
-                expected_data = pd.DataFrame({
-                    'Asset Class': ['US Large Cap Equity', 'International Equity', 'Emerging Markets', 'US Bonds', 'International Bonds'],
-                    'Expected Return': ['7.2%', '8.1%', '9.5%', '3.8%', '4.2%'],
-                    'Volatility': ['16.5%', '18.2%', '24.1%', '4.2%', '7.8%'],
-                    'Allocation': [f'{equity_allocation*0.6:.0f}%', f'{equity_allocation*0.3:.0f}%', 
-                                  f'{equity_allocation*0.1:.0f}%', f'{bond_allocation*0.8:.0f}%', f'{bond_allocation*0.2:.0f}%']
+                institutional_data = pd.DataFrame({
+                    'Asset Class': ['Public Equity', 'Private Equity', 'Real Estate', 'Fixed Income', 'Alternatives'],
+                    'Expected Return': ['7.5%', '9.2%', '6.8%', '4.2%', '5.5%'],
+                    'Volatility': ['16.8%', '22.4%', '14.2%', '4.8%', '12.1%'],
+                    'Liquidity': ['Daily', 'Quarterly', 'Monthly', 'Daily', 'Variable'],
+                    'Allocation': [f'{equity_allocation}%', f'{private_equity}%', f'{real_estate}%', 
+                                  f'{fixed_income}%', f'{alternatives}%']
                 })
                 
-                st.dataframe(expected_data, use_container_width=True)
-                st.caption("*Expected returns based on institutional research (10-year forward-looking)*")
+                st.dataframe(institutional_data, use_container_width=True)
+                st.caption("*Expected returns based on institutional investment consultant forecasts*")
                 
-                # Calculate portfolio metrics
-                equity_return = 0.072 * 0.6 + 0.081 * 0.3 + 0.095 * 0.1  # Weighted equity return
-                bond_return = 0.038 * 0.8 + 0.042 * 0.2  # Weighted bond return
+                # Calculate institutional portfolio metrics
+                weights = [equity_allocation/100, private_equity/100, real_estate/100, fixed_income/100, alternatives/100]
+                returns = [0.075, 0.092, 0.068, 0.042, 0.055]
+                volatilities = [0.168, 0.224, 0.142, 0.048, 0.121]
                 
-                portfolio_return = (equity_allocation/100) * equity_return + (bond_allocation/100) * bond_return
-                portfolio_volatility = ((equity_allocation/100) * 0.17)**2 + ((bond_allocation/100) * 0.05)**2
-                portfolio_volatility = portfolio_volatility**0.5
+                portfolio_return = sum(w * r for w, r in zip(weights, returns))
+                # Simplified portfolio volatility calculation
+                portfolio_volatility = sum(w * v for w, v in zip(weights, volatilities)) * 0.8  # Diversification benefit
                 
                 st.metric("Expected Portfolio Return", f"{portfolio_return:.1%}")
                 st.metric("Expected Portfolio Volatility", f"{portfolio_volatility:.1%}")
+                st.metric("Expected Sharpe Ratio", f"{(portfolio_return - 0.035)/portfolio_volatility:.2f}")
                 
                 st.session_state.allocation = {
-                    'equity': equity_allocation,
-                    'bond': bond_allocation,
+                    'public_equity': equity_allocation,
+                    'private_equity': private_equity,
+                    'real_estate': real_estate,
+                    'fixed_income': fixed_income,
+                    'alternatives': alternatives,
                     'expected_return': portfolio_return,
                     'volatility': portfolio_volatility
                 }
-
-
+    
     with portfolio_steps[3]:
-        st.markdown("### Step 4: Security Selection & Implementation")
+        st.markdown("### Step 4: Implementation Strategy")
         
         if 'allocation' in st.session_state:
-            selection_col1, selection_col2 = st.columns(2)
+            impl_col1, impl_col2 = st.columns(2)
             
-            with selection_col1:
-                st.markdown("**Equity Portfolio Construction:**")
+            with impl_col1:
+                st.markdown("**Public Equity Implementation:**")
                 
-                equity_pct = st.session_state.allocation['equity']
+                equity_pct = st.session_state.allocation['public_equity']
                 
-                # Sector allocation
+                # Advanced institutional equity implementation
+                st.markdown(f"""
+                **Core-Satellite Structure ({equity_pct}% of total portfolio):**
+                - **Core Holdings (70%):** {equity_pct*0.7:.0f}%
+                  - Global Index: 40% 
+                  - Regional Indices: 30%
+                - **Satellite Holdings (30%):** {equity_pct*0.3:.0f}%
+                  - Active Managers: 15%
+                  - Factor Tilts: 10%
+                  - Tactical Allocation: 5%
+                """)
+                
+                # Sector allocation visualization
                 sectors, weights = get_real_sector_data()
                 
                 fig_sectors = go.Figure(data=[go.Pie(
@@ -439,63 +486,220 @@ def show_equity_fundamentals_page():
                 )])
                 
                 fig_sectors.update_layout(
-                    title="S&P 500 Sector Allocation",
-                    height=400
+                    title="Core Holdings: Global Equity Allocation",
+                    height=350
                 )
                 
                 st.plotly_chart(fig_sectors, use_container_width=True)
-                
-                st.markdown(f"""
-                **Proposed Equity Allocation ({equity_pct}% of portfolio):**
-                - **US Large Cap:** {equity_pct*0.6:.0f}% (S&P 500 Index)
-                - **International Developed:** {equity_pct*0.3:.0f}% (MSCI EAFE Index)
-                - **Emerging Markets:** {equity_pct*0.1:.0f}% (MSCI EM Index)
-                """)
             
-            with selection_col2:
-                st.markdown("**Implementation Vehicles:**")
+            with impl_col2:
+                st.markdown("**Institutional Implementation Vehicles:**")
                 
                 implementation_options = pd.DataFrame({
-                    'Asset Class': ['US Large Cap', 'International Dev.', 'Emerging Markets', 'US Bonds', 'Intl Bonds'],
-                    'Index Fund': ['VTSAX', 'VTIAX', 'VEMAX', 'VBTLX', 'VTABX'],
-                    'ETF': ['VTI', 'VEA', 'VWO', 'BND', 'BNDX'],
-                    'Expense Ratio': ['0.03%', '0.11%', '0.14%', '0.05%', '0.09%'],
-                    'Portfolio Weight': [f'{equity_pct*0.6:.0f}%', f'{equity_pct*0.3:.0f}%', 
-                                        f'{equity_pct*0.1:.0f}%', f'{(100-equity_pct)*0.8:.0f}%', f'{(100-equity_pct)*0.2:.0f}%']
+                    'Strategy': ['Passive Core', 'Enhanced Index', 'Active Long-Only', 'Long-Short Equity', 'Private Equity'],
+                    'Allocation': [f'{equity_pct*0.4:.0f}%', f'{equity_pct*0.2:.0f}%', f'{equity_pct*0.15:.0f}%', 
+                                  f'{equity_pct*0.15:.0f}%', f'{st.session_state.allocation["private_equity"]:.0f}%'],
+                    'Expected Alpha': ['0%', '0.5-1%', '1-3%', '2-5%', '3-6%'],
+                    'Fee Range': ['0.05-0.15%', '0.15-0.35%', '0.75-1.25%', '1.5-2.5%', '2.0-3.0% + 20%'],
+                    'Risk Budget': ['Tracking error <1%', 'TE 1-2%', 'TE 3-5%', 'TE 5-10%', 'Illiquidity premium']
                 })
                 
                 st.dataframe(implementation_options, use_container_width=True)
                 
-                # Calculate total costs
-                total_expense = (equity_pct*0.6*0.0003 + equity_pct*0.3*0.0011 + equity_pct*0.1*0.0014 + 
-                               (100-equity_pct)*0.8*0.0005 + (100-equity_pct)*0.2*0.0009) / 100
+                st.markdown("**Operational Considerations:**")
                 
-                st.metric("Total Portfolio Expense Ratio", f"{total_expense:.2%}")
+                operational_framework = pd.DataFrame({
+                    'Area': ['Trading', 'Risk Management', 'Performance', 'Governance'],
+                    'Approach': [
+                        'Multi-manager platform, transition management',
+                        'Real-time monitoring, stress testing, VaR limits',
+                        'Attribution analysis, benchmark relative',
+                        'Investment committee oversight, external consultants'
+                    ],
+                    'Key Metrics': [
+                        'Implementation shortfall, market impact',
+                        'Tracking error, factor exposures, tail risk',
+                        'Information ratio, alpha generation, fees',
+                        'Policy compliance, fiduciary standards'
+                    ]
+                })
                 
-                st.markdown("""
-                **Implementation Summary:**
-                - **Approach:** Low-cost index fund diversification
-                - **Rebalancing:** Quarterly review, rebalance if >5% deviation
-                - **Tax Efficiency:** Tax-advantaged accounts first, then taxable
-                - **Dollar-Cost Averaging:** Regular monthly investments
-                """)
+                st.dataframe(operational_framework, use_container_width=True)
+                
+                # Calculate institutional-level costs
+                core_cost = equity_pct * 0.4 * 0.001  # 0.1% on core
+                satellite_cost = equity_pct * 0.3 * 0.015  # 1.5% on satellites
+                pe_cost = st.session_state.allocation['private_equity'] * 0.025  # 2.5% on PE
+                total_equity_cost = (core_cost + satellite_cost + pe_cost) / 100
+                
+                st.metric("Blended Equity Management Fee", f"{total_equity_cost:.2%}")
     
-    # === FINAL PORTFOLIO SUMMARY ===
+    # === INSTITUTIONAL PORTFOLIO SUMMARY ===
     if 'allocation' in st.session_state:
-        st.subheader("📊 Final Portfolio Summary")
+        st.subheader("📊 Institutional Portfolio Summary")
         
         summary_col1, summary_col2 = st.columns(2)
         
         with summary_col1:
             final_allocation = pd.DataFrame({
-                'Asset Class': ['US Large Cap Equity', 'International Equity', 'Emerging Markets', 'US Bonds', 'International Bonds'],
-                'Allocation': [f"{st.session_state.allocation['equity']*0.6:.1f}%", 
-                              f"{st.session_state.allocation['equity']*0.3:.1f}%",
-                              f"{st.session_state.allocation['equity']*0.1:.1f}%",
-                              f"{st.session_state.allocation['bond']*0.8:.1f}%",
-                              f"{st.session_state.allocation['bond']*0.2:.1f}%"],
-                'Expected Return': ['7.2%', '8.1%', '9.5%', '3.8%', '4.2%'],
-                'Risk Level': ['Medium', 'Medium-High', 'High', 'Low', 'Low-Medium']
+                'Asset Class': ['Public Equity', 'Private Equity', 'Real Estate', 'Fixed Income', 'Alternatives/Cash'],
+                'Allocation': [f"{st.session_state.allocation['public_equity']:.0f}%", 
+                              f"{st.session_state.allocation['private_equity']:.0f}%",
+                              f"{st.session_state.allocation['real_estate']:.0f}%",
+                              f"{st.session_state.allocation['fixed_income']:.0f}%",
+                              f"{st.session_state.allocation['alternatives']:.0f}%"],
+                'Expected Return': ['7.5%', '9.2%', '6.8%', '4.2%', '5.5%'],
+                'Liquidity': ['Daily', 'Quarterly', 'Monthly', 'Daily', 'Variable'],
+                'Risk Level': ['High', 'Very High', 'Medium-High', 'Low', 'Medium']
+            })
+            
+            st.dataframe(final_allocation, use_container_width=True)
+        
+        with summary_col2:
+            institution = st.session_state.institution_profile
+            risk = st.session_state.risk_assessment
+            alloc = st.session_state.allocation
+            
+            st.markdown(f"""
+            **Portfolio Characteristics:**
+            - **Institution Type:** {institution['type']}
+            - **Strategy Classification:** {risk['strategy']}
+            - **Expected Return:** {alloc['expected_return']:.1%}
+            - **Expected Volatility:** {alloc['volatility']:.1%}
+            - **Sharpe Ratio (Est.):** {(alloc['expected_return'] - 0.035)/alloc['volatility']:.2f}
+            - **Tracking Error Budget:** {risk['tracking_error']}
+            """)
+            
+            st.markdown("""
+            **Implementation Roadmap:**
+            1. **Investment Policy Statement** - Formal documentation of objectives and constraints
+            2. **Manager Selection** - Due diligence process for external managers
+            3. **Risk Management System** - Real-time monitoring and reporting infrastructure  
+            4. **Governance Structure** - Investment committee and decision-making framework
+            5. **Performance Measurement** - Attribution analysis and benchmark reporting
+            6. **Rebalancing Protocol** - Systematic approach to maintaining target allocations
+            """)
+            
+            st.markdown(f"""
+            **Key Performance Indicators:**
+            - **Benchmark:** Custom strategic benchmark based on allocation
+            - **Target Alpha:** 0.5-2.0% annual outperformance
+            - **Risk Budget:** Max {risk['var_limit']} monthly VaR
+            - **Rebalancing:** Quarterly review, ±3% deviation triggers
+            - **Reporting:** Monthly performance, quarterly attribution analysis
+            """)
+
+    # === ADDITIONAL INSTITUTIONAL CONSIDERATIONS ===
+    st.subheader("🏛️ Advanced Institutional Considerations")
+    
+    advanced_tabs = st.tabs(["The Theory: Factor Investing", "The Theory: Risk Management", "The Theory: Governance"])
+    
+    with advanced_tabs[0]:
+        st.markdown("#### Factor-Based Portfolio Construction")
+        
+        st.markdown("""
+        **Modern institutional equity portfolios** increasingly utilize factor-based approaches to enhance returns 
+        and manage risk beyond traditional market cap-weighted indices.
+        """)
+        
+        factor_col1, factor_col2 = st.columns(2)
+        
+        with factor_col1:
+            factor_framework = pd.DataFrame({
+                'Factor': ['Value', 'Quality', 'Low Volatility', 'Momentum', 'Size', 'Profitability'],
+                'Risk Premium': ['3-4%', '2-3%', '2-3%', '5-8%', '1-2%', '2-4%'],
+                'Implementation': ['P/B, P/E screens', 'ROE, debt ratios', 'Low beta, stable earnings', 'Price momentum', 'Small-cap tilt', 'ROA, margins'],
+                'Institutional Use': ['Value tilt', 'Quality overlay', 'Risk reduction', 'Tactical allocation', 'Completion portfolios', 'Fundamental indexing']
+            })
+            
+            st.dataframe(factor_framework, use_container_width=True)
+            
+        with factor_col2:
+            st.markdown("""
+            **Factor Integration Strategies:**
+            
+            **Multi-Factor Approach**: Combine factors to reduce single-factor risk while maintaining diversified risk premium exposure.
+            
+            **Factor Timing**: Institutional investors may dynamically adjust factor exposures based on market cycles and valuation metrics.
+            
+            **Implementation Methods**:
+            - Internal quantitative strategies
+            - External factor-based managers  
+            - Smart beta ETFs and index funds
+            - Custom factor indices
+            """)
+    
+    with advanced_tabs[1]:
+        st.markdown("#### Institutional Risk Management Framework")
+        
+        risk_framework = pd.DataFrame({
+            'Risk Type': ['Market Risk', 'Credit Risk', 'Liquidity Risk', 'Operational Risk', 'Model Risk'],
+            'Key Metrics': ['VaR, Beta, Correlation', 'Credit ratings, Spread duration', 'Bid-ask spreads, Trading volume', 'Key person, Process risk', 'Backtesting, Parameter sensitivity'],
+            'Monitoring': ['Daily', 'Monthly', 'Weekly', 'Quarterly', 'Quarterly'],
+            'Limits/Controls': ['VaR limits, Beta ranges', 'Credit quality minimums', 'Liquidity buckets', 'Due diligence, Audits', 'Model validation, Stress tests']
+        })
+        
+        st.dataframe(risk_framework, use_container_width=True)
+        
+        st.markdown("""
+        **Advanced Risk Techniques:**
+        - **Scenario Analysis**: Stress testing under various market conditions
+        - **Factor Risk Models**: Multi-factor risk attribution and forecasting
+        - **Tail Risk Management**: Managing extreme downside scenarios
+        - **Dynamic Hedging**: Options and derivatives for portfolio protection
+        """)
+    
+    with advanced_tabs[2]:
+        st.markdown("#### Governance and Fiduciary Framework")
+        
+        governance_col1, governance_col2 = st.columns(2)
+        
+        with governance_col1:
+            governance_structure = pd.DataFrame({
+                'Governance Level': ['Board of Trustees', 'Investment Committee', 'CIO/Investment Staff', 'External Managers', 'Service Providers'],
+                'Key Responsibilities': [
+                    'Fiduciary oversight, Policy approval',
+                    'Strategy decisions, Manager selection', 
+                    'Implementation, Risk monitoring',
+                    'Portfolio management, Research',
+                    'Custody, Administration, Consulting'
+                ],
+                'Meeting Frequency': ['Quarterly', 'Monthly', 'Daily/Weekly', 'As needed', 'Ongoing'],
+                'Key Decisions': [
+                    'Asset allocation, Spending policy',
+                    'Manager hiring/firing, Tactical moves',
+                    'Rebalancing, Trade execution', 
+                    'Security selection, Risk management',
+                    'Operations, Reporting, Compliance'
+                ]
+            })
+            
+            st.dataframe(governance_structure, use_container_width=True)
+        
+        with governance_col2:
+            st.markdown("""
+            **Fiduciary Best Practices:**
+            
+            **Investment Policy Statement**: Comprehensive document outlining objectives, constraints, and implementation approach.
+            
+            **Due Diligence Process**: Systematic evaluation of investment managers including quantitative and qualitative factors.
+            
+            **Performance Measurement**: Regular attribution analysis to understand sources of returns and risk.
+            
+            **Documentation**: Detailed records of investment decisions and rationale for fiduciary protection.
+            
+            **Conflicts of Interest**: Clear policies and procedures for managing potential conflicts in investment decisions.
+            """)
+    
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 5px;">
+        <p><strong>🎓 Institutional Portfolio Construction: Theory to Practice</strong></p>
+        <p>This simulation demonstrates how institutional investors systematically build sophisticated equity portfolios, 
+        balancing theoretical frameworks with practical implementation constraints and fiduciary responsibilities.</p>
+    </div>
+    """, unsafe_allow_html=True)
+-Medium']
             })
             
             st.dataframe(final_allocation, use_container_width=True)
