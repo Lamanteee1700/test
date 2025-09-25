@@ -69,9 +69,17 @@ def greeks(S, K, T, r, sigma, option="call"):
     # Vega (per 1% change in vol, divide by 100)
     vega  = S * norm.pdf(d1_val) * np.sqrt(T) / 100
     # Theta (per day)
-    theta = (-(S*norm.pdf(d1_val)*sigma)/(2*np.sqrt(T)) 
-             - r*K*np.exp(-r*T)*norm.cdf(d2_val if option=="call" else -d2_val)) / 365
+    if option == "call":
+        theta = (-(S*norm.pdf(d1_val)*sigma)/(2*np.sqrt(T)) 
+                 - r*K*np.exp(-r*T)*norm.cdf(d2_val)) / 365
+    else: # put
+        theta = (-(S*norm.pdf(d1_val)*sigma)/(2*np.sqrt(T)) 
+                 + r*K*np.exp(-r*T)*norm.cdf(-d2_val)) / 365
+    
     # Rho (per 1% change in rates, divide by 100)
-    rho   = (K*T*np.exp(-r*T)*norm.cdf(d2_val if option=="call" else -d2_val)) / 100
+    if option == "call":
+        rho   = (K*T*np.exp(-r*T)*norm.cdf(d2_val)) / 100
+    else: # put
+        rho   = (-K*T*np.exp(-r*T)*norm.cdf(-d2_val)) / 100
 
     return delta, gamma, vega, theta, rho
