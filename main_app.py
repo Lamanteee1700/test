@@ -370,8 +370,7 @@ with upcoming_col3:
         <span class="feature-icon">🧮</span>
         <h4 class="feature-title">Advanced Models</h4>
         <div class="feature-description">
-            Next-generation quantitative models including 
-            Monte Carlo simulations, Jump Diffusion, 
+            Including Monte Carlo simulations, Jump Diffusion, 
             and stochastic volatility frameworks.
         </div>
     </div>
