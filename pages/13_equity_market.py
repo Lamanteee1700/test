@@ -714,7 +714,6 @@ def show_equity_fundamentals_page():
         
         However, empirical research revealed additional factors that systematically drive returns.
 
-        
         ### Fama-French Three-Factor Model (1993)
         
         **Enhanced the CAPM** by adding two additional factors:
@@ -1343,3 +1342,405 @@ def show_equity_fundamentals_page():
         - **Algorithm Trading**: TWAP/VWAP strategies for optimal execution
         - **Liquidity Buffers**: Maintain cash reserves for opportunities/obligations
         """)
+    
+    # === SECTION 9: ADVANCED TOPICS AND RISKS ===
+    st.subheader("⚠️ Advanced Considerations and Risk Management")
+    
+    advanced_tabs = st.tabs(["📉 Tail Risks", "🔄 Correlation Dynamics", "💱 Currency Exposure"])
+    
+    with advanced_tabs[0]:
+        st.markdown("### Tail Risk and Black Swan Events")
+        
+        # Simulate return distribution with fat tails
+        np.random.seed(42)
+        normal_returns = np.random.normal(0.001, 0.015, 5000)  # Daily returns
+        
+        # Add fat tails (occasional extreme moves)
+        extreme_events = np.random.choice([0, 1], size=5000, p=[0.99, 0.01])
+        extreme_magnitude = np.random.normal(0, 0.08, 5000) * extreme_events
+        actual_returns = normal_returns + extreme_magnitude
+        
+        # Create distribution comparison
+        fig_tails = go.Figure()
+        
+        fig_tails.add_trace(go.Histogram(
+            x=normal_returns * 100,
+            name='Normal Distribution',
+            opacity=0.7,
+            nbinsx=50,
+            histnorm='probability density'
+        ))
+        
+        fig_tails.add_trace(go.Histogram(
+            x=actual_returns * 100,
+            name='Actual Market Returns (Fat Tails)',
+            opacity=0.7,
+            nbinsx=50,
+            histnorm='probability density'
+        ))
+        
+        fig_tails.update_layout(
+            title="Return Distributions: Normal vs Fat-Tailed",
+            xaxis_title="Daily Return (%)",
+            yaxis_title="Probability Density",
+            height=400,
+            barmode='overlay'
+        )
+        
+        st.plotly_chart(fig_tails, use_container_width=True)
+        
+        tail_risk_events = pd.DataFrame({
+            'Event Type': ['Market Crash', 'Flash Crash', 'Currency Crisis', 'Geopolitical Shock', 'Pandemic'],
+            'Historical Examples': [
+                '1987, 2008, 2020',
+                '2010 Flash Crash',
+                'Asian Crisis 1997, Brexit',
+                '9/11, Gulf Wars',
+                'COVID-19, SARS'
+            ],
+            'Typical Magnitude': ['-20% to -50%', '-5% to -10% (minutes)', '-10% to -30%', '-5% to -15%', '-30% to -40%'],
+            'Duration': ['Months to years', 'Minutes to hours', 'Months', 'Days to weeks', 'Months'],
+            'Mitigation': [
+                'Diversification, hedging',
+                'Circuit breakers, position limits',
+                'Geographic diversification',
+                'Scenario planning, cash reserves',
+                'Sector diversification, defensive assets'
+            ]
+        })
+        
+        st.dataframe(tail_risk_events, use_container_width=True)
+    
+    with advanced_tabs[1]:
+        st.markdown("### Correlation Dynamics in Crisis vs Normal Times")
+        
+        # Simulate correlation changes
+        correlation_dates = pd.date_range(start='2008-01-01', end='2024-12-31', freq='M')
+        
+        normal_correlation = 0.6
+        crisis_correlation = 0.9
+        correlations = []
+        
+        for date in correlation_dates:
+            # Crisis periods
+            if (date.year == 2008 and date.month >= 9) or (date.year == 2009) or (date.year == 2020 and 3 <= date.month <= 6):
+                base_corr = crisis_correlation
+            else:
+                base_corr = normal_correlation
+                
+            # Add some noise
+            corr = base_corr + np.random.normal(0, 0.05)
+            correlations.append(max(0.2, min(0.95, corr)))
+        
+        fig_corr = go.Figure()
+        
+        fig_corr.add_trace(go.Scatter(
+            x=correlation_dates, y=correlations,
+            mode='lines',
+            name='Inter-Stock Correlation',
+            line=dict(color='purple', width=2)
+        ))
+        
+        fig_corr.add_hline(
+            y=normal_correlation, 
+            line_dash="dash", 
+            line_color="green",
+            annotation_text=f"Normal Times: {normal_correlation:.1f}"
+        )
+        
+        fig_corr.add_hline(
+            y=crisis_correlation, 
+            line_dash="dash", 
+            line_color="red",
+            annotation_text=f"Crisis Periods: {crisis_correlation:.1f}"
+        )
+        
+        fig_corr.update_layout(
+            title="Correlation Breakdown: When Diversification Fails",
+            xaxis_title="Year",
+            yaxis_title="Average Stock Correlation",
+            height=400
+        )
+        
+        st.plotly_chart(fig_corr, use_container_width=True)
+        
+        st.markdown("""
+        **The Correlation Problem:**
+        
+        - **Normal Times**: Stocks move somewhat independently (correlation ~0.6)
+        - **Crisis Periods**: Almost all stocks fall together (correlation >0.9)
+        - **"When you need diversification most, it works least"**
+        - **Sector diversification becomes less effective during systemic stress**
+        
+        **Implications for Portfolio Construction:**
+        - Geographic and asset class diversification more important than stock picking
+        - Consider alternative assets (bonds, commodities, real estate) for true diversification
+        - Maintain adequate cash reserves for crisis opportunities
+        - Use options or other hedging strategies for tail risk protection
+        """)
+    
+    with advanced_tabs[2]:
+        st.markdown("### Currency Exposure in International Equities")
+        
+        # Simulate currency impact on international returns
+        fx_dates = pd.date_range(start='2020-01-01', end='2024-12-31', freq='M')
+        np.random.seed(42)
+        
+        # Simulate local vs USD returns
+        local_returns = np.random.normal(0.008, 0.04, len(fx_dates))  # 0.8% monthly in local currency
+        fx_returns = np.random.normal(0, 0.03, len(fx_dates))  # Currency volatility
+        
+        local_cumulative = np.cumprod(1 + local_returns) - 1
+        usd_cumulative = np.cumprod(1 + local_returns + fx_returns) - 1
+        
+        fig_fx = go.Figure()
+        
+        fig_fx.add_trace(go.Scatter(
+            x=fx_dates, y=local_cumulative * 100,
+            mode='lines',
+            name='Local Currency Returns',
+            line=dict(color='blue', width=2)
+        ))
+        
+        fig_fx.add_trace(go.Scatter(
+            x=fx_dates, y=usd_cumulative * 100,
+            mode='lines',
+            name='USD Returns (with FX impact)',
+            line=dict(color='red', width=2)
+        ))
+        
+        fig_fx.update_layout(
+            title="Currency Impact on International Equity Returns",
+            xaxis_title="Date",
+            yaxis_title="Cumulative Return (%)",
+            height=400
+        )
+        
+        st.plotly_chart(fig_fx, use_container_width=True)
+        
+        currency_considerations = pd.DataFrame({
+            'Aspect': ['Return Impact', 'Volatility Impact', 'Hedging Options', 'Cost Considerations'],
+            'USD Strengthening': [
+                'Reduces international returns',
+                'Adds volatility to returns',
+                'Currency hedged funds available',
+                'Hedging costs 0.2-0.8% annually'
+            ],
+            'USD Weakening': [
+                'Enhances international returns',
+                'Can smooth overall portfolio returns',
+                'May choose unhedged exposure',
+                'Opportunity cost of hedging'
+            ],
+            'Strategic Considerations': [
+                'Long-term USD trends matter most',
+                'Short-term volatility vs long-term trends',
+                'Hedge ratio decisions (0%, 50%, 100%)',
+                'Balance hedging costs vs risk reduction'
+            ]
+        })
+        
+        st.dataframe(currency_considerations, use_container_width=True)
+        
+        st.markdown("""
+        **Currency Hedging Decision Framework:**
+        
+        **Arguments for Hedging:**
+        - Reduces portfolio volatility
+        - Focuses returns on underlying equity performance  
+        - Eliminates currency timing risk
+        - More predictable outcomes for planning
+        
+        **Arguments Against Hedging:**
+        - Costs money (hedge premium)
+        - Currency can provide diversification benefit
+        - USD weakness can enhance international returns
+        - Adds complexity to investment process
+        
+        **Common Approaches:**
+        - **Full Hedge (100%)**: Maximum volatility reduction
+        - **Partial Hedge (50%)**: Balance of risk reduction and cost
+        - **No Hedge (0%)**: Accept full currency exposure
+        - **Dynamic Hedging**: Adjust based on market conditions
+        """)
+    
+    # === SECTION 10: CONCLUSION AND KEY TAKEAWAYS ===
+    st.subheader("🎯 Key Takeaways: Building an Equity Investment Framework")
+    
+    with st.container():
+        st.markdown("""
+        <div style="background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%); padding: 2rem; border-radius: 10px; color: white;">
+            <h4>Essential Principles for Equity Investing</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        conclusion_cols = st.columns(2)
+        
+        with conclusion_cols[0]:
+            st.markdown("""
+            **Fundamental Understanding:**
+            - Equities represent residual ownership with unlimited upside potential
+            - Long-term wealth creation through compounding and economic growth  
+            - Valuation combines quantitative models with qualitative judgment
+            - Factor exposure beyond market beta can enhance returns
+            
+            **Risk Management:**
+            - Diversification across sectors, geographies, and market caps
+            - Time horizon matching with volatility tolerance
+            - Understanding behavioral biases and market psychology
+            - Systematic approach to reduce emotional decision-making
+            """)
+        
+        with conclusion_cols[1]:
+            st.markdown("""
+            **Portfolio Construction:**
+            - Strategic asset allocation based on long-term objectives
+            - Factor diversification to capture multiple risk premiums  
+            - ESG integration for risk management and values alignment
+            - Regular rebalancing to maintain target exposures
+            
+            **Modern Considerations:**
+            - Technology disruption accelerating industry transformation
+            - Climate risk becoming material valuation factor
+            - Demographic trends creating sector rotation opportunities  
+            - Geopolitical fragmentation affecting global diversification
+            """)
+    
+    # Advanced Risk Management Summary
+    with st.container():
+        st.markdown("#### Advanced Risk Management Checklist")
+        
+        risk_checklist = pd.DataFrame({
+            'Risk Category': ['Valuation Risk', 'Liquidity Risk', 'Concentration Risk', 'Currency Risk', 'Tail Risk'],
+            'Key Indicators': [
+                'P/E ratios, cyclical valuations',
+                'Bid-ask spreads, market depth',
+                'Single stock/sector weights',
+                'Unhedged international exposure',
+                'Correlation spikes, VIX levels'
+            ],
+            'Monitoring Tools': [
+                'Historical P/E charts, sector rotation',
+                'Average daily volume, market impact',
+                'Position sizing rules, diversification metrics',
+                'Currency hedging ratios',
+                'Scenario analysis, stress testing'
+            ],
+            'Mitigation Strategies': [
+                'Dollar-cost averaging, contrarian positioning',
+                'Position limits, time diversification',
+                'Maximum position sizes, sector caps',
+                'Hedging decisions, natural hedges',
+                'Tail hedges, defensive allocations'
+            ]
+        })
+        
+        st.dataframe(risk_checklist, use_container_width=True)
+    
+    # Interactive Summary Tool
+    with st.expander("🧮 Personal Equity Allocation Calculator", expanded=False):
+        st.markdown("### Determine Your Equity Allocation")
+        
+        calc_col1, calc_col2 = st.columns(2)
+        
+        with calc_col1:
+            age = st.slider("Age", 20, 80, 35)
+            risk_tolerance = st.selectbox("Risk Tolerance", ["Conservative", "Moderate", "Aggressive"])
+            time_horizon = st.slider("Investment Horizon (years)", 1, 40, 10)
+            income_stability = st.selectbox("Income Stability", ["Stable", "Variable", "Uncertain"])
+        
+        with calc_col2:
+            # Calculate suggested allocation
+            base_equity = 100 - age  # Age-based rule
+            
+            # Risk tolerance adjustment
+            risk_adj = {"Conservative": -10, "Moderate": 0, "Aggressive": +10}[risk_tolerance]
+            
+            # Time horizon adjustment  
+            horizon_adj = min(10, time_horizon - 10)
+            
+            # Income stability adjustment
+            income_adj = {"Stable": +5, "Variable": 0, "Uncertain": -10}[income_stability]
+            
+            suggested_equity = max(20, min(90, base_equity + risk_adj + horizon_adj + income_adj))
+            
+            st.metric("Suggested Equity Allocation", f"{suggested_equity}%")
+            st.metric("Suggested Bond Allocation", f"{100-suggested_equity}%")
+            
+            st.markdown(f"""
+            **Allocation Rationale:**
+            - Base allocation (100 - age): {100-age}%
+            - Risk tolerance adjustment: {risk_adj:+d}%
+            - Time horizon adjustment: {horizon_adj:+d}%  
+            - Income stability adjustment: {income_adj:+d}%
+            
+            **Final Allocation: {suggested_equity}% Equity / {100-suggested_equity}% Bonds**
+            
+            *Note: This is a simplified calculator. Consult with a financial advisor for personalized advice.*
+            """)
+    
+    # Final Implementation Framework
+    with st.expander("📋 Equity Investment Implementation Framework", expanded=False):
+        st.markdown("### Step-by-Step Implementation Guide")
+        
+        implementation_steps = pd.DataFrame({
+            'Step': ['1. Define Objectives', '2. Risk Assessment', '3. Asset Allocation', '4. Security Selection', '5. Implementation', '6. Monitoring'],
+            'Key Actions': [
+                'Set time horizon, return targets, constraints',
+                'Evaluate risk tolerance, liquidity needs',
+                'Determine equity vs bond allocation',
+                'Choose index funds vs active vs individual stocks',
+                'Execute trades, set up automatic investing',
+                'Regular rebalancing, performance review'
+            ],
+            'Considerations': [
+                'Be realistic about returns and volatility',
+                'Consider worst-case scenarios',
+                'Start conservative, increase over time',
+                'Cost-conscious, diversified approach',
+                'Dollar-cost averaging for large amounts',
+                'Quarterly review, annual rebalancing'
+            ],
+            'Common Mistakes': [
+                'Unrealistic expectations, lack of planning',
+                'Overconfidence, ignoring downside risk',
+                'Too aggressive initially, panic selling',
+                'Over-diversification, high fees',
+                'Market timing, emotional decisions',
+                'Neglect, over-trading, tax inefficiency'
+            ]
+        })
+        
+        st.dataframe(implementation_steps, use_container_width=True)
+        
+        st.markdown("""
+        **Final Wisdom for Equity Investors:**
+        
+        ✅ **Do:**
+        - Start early, invest regularly, stay disciplined
+        - Focus on low costs and broad diversification
+        - Understand what you own and why you own it
+        - Plan for both bull and bear markets
+        - Rebalance systematically, not emotionally
+        
+        ❌ **Don't:**
+        - Try to time the market or chase performance
+        - Put all eggs in one basket (sector/stock/geography)
+        - Make investment decisions based on news or emotions
+        - Neglect to consider taxes and fees
+        - Abandon your long-term plan during short-term volatility
+        """)
+    
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 5px;">
+        <p><strong>📚 Congratulations on completing this comprehensive equity fundamentals guide!</strong></p>
+        <p>Remember: successful equity investing is a marathon, not a sprint. Focus on time-tested principles, 
+        continuous learning, and disciplined execution rather than trying to outsmart the market.</p>
+        <p><em>"The stock market is a device for transferring money from the impatient to the patient." - Warren Buffett</em></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    show_equity_fundamentals_page()
+</invoke>
