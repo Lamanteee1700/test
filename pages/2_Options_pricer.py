@@ -430,11 +430,10 @@ def enhanced_options_page():
         
         # P&L calculation
         S_expiry = np.linspace(S*0.7, S*1.3, 100)
-        S_linspace = np.linspace(0, S*100, 100)
         option_pnl = []
         stock_pnl = []
         
-        for S_exp in S_linspace:
+        for S_exp in S_expiry:
             # Option P&L (assuming we bought the option)
             if option_type == 'call':
                 option_value_exp = max(0, S_exp - K)
@@ -483,7 +482,7 @@ def enhanced_options_page():
         max_loss_idx = np.argmin(option_pnl)
         
         pnl_col1, pnl_col2, pnl_col3 = st.columns(3)
-        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < S*5 else "Unlimited")
+        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < S*2 else "Unlimited")
         pnl_col2.metric("Max Loss", f"${min(option_pnl):.2f}")
         pnl_col3.metric("Prob. of Profit", f"{np.mean(np.array(option_pnl) > 0)*100:.1f}%")
     
