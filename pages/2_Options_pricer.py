@@ -10,7 +10,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 from utils import bs_price, greeks, d1, d2
 
-def enhanced_options_page():
+def options_page():
     st.title("🎯 Black-Scholes Option Pricer with Advanced Analytics")
     
     # Add market context banner
@@ -798,4 +798,4 @@ def enhanced_options_page():
             """)
 
 if __name__ == "__main__":
-    enhanced_options_page()
+    options_page()
