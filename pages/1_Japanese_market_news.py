@@ -5,6 +5,184 @@ from mistralai import Mistral
 import re
 from datetime import datetime
 
+    # Display articles in cards
+    for i, article in enumerate(articles):
+        if not article.get('headline'):
+            continue
+            
+        # Determine icon based on content
+        headline_lower = article['headline'].lower()
+        if any(word in headline_lower for word in ['株', 'stock', '市場', 'market', '上昇', '下落']):
+            icon = "📈"
+        elif any(word in headline_lower for word in ['企業', 'company', '決算', 'earnings']):
+            icon = "🏢" 
+        elif any(word in headline_lower for word in ['銀行', 'bank', '金融', 'finance']):
+            icon = "🏦"
+        elif any(word in headline_lower for word in ['政策', 'policy', '政府', 'government']):
+            icon = "🏛️"
+        else:
+            icon = "💼"
+        
+        # Create article card
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                border-left: 4px solid #2a5298;
+            ">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div style="font-size: 2rem; margin-top: 0.2rem;">{icon}</div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 0.8rem 0; color: #1e3c72; font-size: 1.1rem; line-height: 1.3;">
+                            {article['headline']}
+                        </h4>
+                        <p style="margin: 0 0 1rem 0; color: #333; line-height: 1.5; font-size: 0.95rem;">
+                            {article['summary']}
+                        </p>
+                        {f'<a href="{article["link"]}" target="_blank" style="color: #2a5298; text-decoration: none; font-weight: 500; font-size: 0.9rem;">🔗 Read full article</a>' if article.get('link') else ''}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # === GLOBAL MARKET OUTLOOK ===
+    st.markdown("---")
+    st.subheader("🌍 Global Market Outlook & Japan Investment Perspective")
+    
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 1.5rem; border-radius: 10px; margin: 1rem 0; border-left: 4px solid #28a745;">
+        <h4 style="color: #155724; margin-top: 0;">Key Global Investment Themes</h4>
+        <p style="color: #495057; margin-bottom: 0;">
+            Based on institutional analysis and current market conditions affecting Japan and global markets
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    outlook_col1, outlook_col2 = st.columns(2)
+    
+    with outlook_col1:
+        st.markdown("#### Japan's Investment Position")
+        
+        st.markdown("""
+        **Macro Stability Amid Global Uncertainty**
+        
+        Japan maintains relative stability as global trade tensions escalate. Despite potential tariff risks, 
+        the country's economic fundamentals remain solid with continued wage growth averaging 2.8% in H2 2024 
+        and inflation stabilizing around target levels after decades of deflation.
+        
+        **Key Supportive Factors:**
+        - **Mild Reflation Success**: Fourth consecutive year of 2%+ inflation
+        - **Corporate Governance Revolution**: Share buybacks up 96% year-over-year
+        - **Tourism Boom**: Record 36.87 million visitors contributing 7.5% of GDP
+        - **Capital Investment**: Accelerating capex spending amid AI and productivity focus
+        """)
+        
+        st.markdown("""
+        **Trade Relationship Dynamics**
+        
+        The US-Japan relationship appears stable under current leadership, with recent meetings suggesting 
+        Japan may avoid targeted tariffs. Japan's bilateral trade surplus with the US has moderately 
+        declined over two decades and remains smaller relative to China and Europe deficits.
+        """)
+    
+    with outlook_col2:
+        st.markdown("#### Market Positioning & Outlook")
+        
+        st.markdown("""
+        **Equity Market Thesis**
+        
+        Japanese equities remain attractive despite two consecutive years of 20%+ returns. 
+        The market continues to offer value with TOPIX trading at P/E ratios 30% below 
+        the S&P 500, while corporate earnings have matched US performance since 2010.
+        
+        **Multi-Year Investment Drivers:**
+        - **Sustainable Inflation**: Breaking decades of deflationary mindset
+        - **Corporate Reform**: Improved ROE and shareholder-friendly policies  
+        - **Under-Ownership**: International and domestic investors remain underweight
+        """)
+        
+        # Market outlook metrics
+        st.markdown("""
+        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <strong>2025 Market Expectations:</strong><br>
+            • TOPIX Target: 3,075 - 3,175 (low-teens upside)<br>
+            • Earnings Growth: 9.0% (2025), 8.5% (2026)<br>
+            • Forward P/E Multiple: 15x<br>
+            • Preferred Sectors: Financials, Industrials, Consumer Discretionary
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Policy and Currency Section
+    st.markdown("#### Monetary Policy & Currency Dynamics")
+    
+    policy_col1, policy_col2 = st.columns(2)
+    
+    with policy_col1:
+        st.markdown("""
+        **Bank of Japan Approach**
+        
+        The BoJ maintains a gradual normalization path following its recent 25bp hike. 
+        While some board members advocate for bringing rates to 1% (near neutral range), 
+        current economic conditions don't suggest urgency for aggressive tightening.
+        
+        **Policy Considerations:**
+        - Stable wage growth supporting reflation cycle
+        - Global uncertainty favoring cautious approach  
+        - Political pressure for JPY strength balanced against economic needs
+        """)
+    
+    with policy_col2:
+        st.markdown("""
+        **Currency Outlook**
+        
+        The Japanese yen has emerged as a top performer among major currencies, 
+        though movements remain closely tied to US Treasury yield changes. 
+        Further JPY strength likely requires additional US rate declines.
+        
+        **Investment Implications:**
+        - Increasingly comfortable with unhedged Japanese equity exposure
+        - JPY serves as natural hedge against weaker global risk sentiment
+        - Defensive positioning amid geopolitical uncertainties
+        """)
+    
+    # Risk Assessment
+    st.markdown("#### Risk Assessment & Strategic Considerations")
+    
+    st.markdown("""
+    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <strong>Key Risks to Monitor:</strong><br>
+        • Global trade policy escalation despite current US-Japan stability<br>
+        • Spillover effects from broader trade uncertainty affecting business investment<br>
+        • Consumption recovery pace dependent on sustained wage growth<br>
+        • Manufacturing PMI recovery sustainability for earnings acceleration
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <strong>Strategic Opportunities:</strong><br>
+        • Structural undervaluation relative to global peers<br>
+        • Corporate governance improvements driving shareholder returns<br>
+        • Productivity investments potentially breaking growth ceiling<br>
+        • Tourism sector providing sustained economic support
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Source attribution
+    st.markdown("---")
+    st.markdown("""
+    <div style="font-size: 0.9rem; color: #6c757d; font-style: italic; text-align: center; padding: 1rem;">
+        <strong>Source:</strong> Analysis based on insights from J.P. Morgan Private Bank Asia Investment Strategy, 
+        "Why Japan remains one of our top calls" (February 13, 2025). Market data integrated from real-time sources.
+    </div>
+    """, unsafe_allow_html=True)
+
+
 # --- Configuration: Yahoo Japan Media Feeds ---
 JAPANESE_FINANCIAL_RSS_FEEDS = {
     "Forbes Japan": "https://news.yahoo.co.jp/rss/media/forbes/all.xml",
