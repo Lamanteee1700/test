@@ -312,7 +312,7 @@ def enhanced_options_page():
                  help="Stock price needed to break even")
     
     # === ENHANCED GREEKS DASHBOARD ===
-    st.subheader("📊 Greeks Risk Analytics")
+    st.subheader("📊 Greeks Analytics")
     
     # Create enhanced Greeks display with interpretations
     greeks_data = {
@@ -350,7 +350,7 @@ def enhanced_options_page():
     )
     
     # === ADVANCED VISUALIZATIONS ===
-    st.subheader("📈 Advanced Analytics & Visualizations")
+    st.subheader("📈 Advanced Visualizations")
     
     # Visualization tabs
     viz_tab1, viz_tab2, viz_tab3, viz_tab4 = st.tabs([
@@ -429,7 +429,7 @@ def enhanced_options_page():
         st.write("**Profit & Loss Analysis at Expiration**")
         
         # P&L calculation
-        S_expiry = np.linspace(S*0.7, S*1.3, 100)
+        S_expiry = np.linspace(0, S*100, 100)
         option_pnl = []
         stock_pnl = []
         
@@ -482,7 +482,7 @@ def enhanced_options_page():
         max_loss_idx = np.argmin(option_pnl)
         
         pnl_col1, pnl_col2, pnl_col3 = st.columns(3)
-        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < 1000 else "Unlimited")
+        pnl_col1.metric("Max Profit", f"${max(option_pnl):.2f}" if max(option_pnl) < S*5 else "Unlimited")
         pnl_col2.metric("Max Loss", f"${min(option_pnl):.2f}")
         pnl_col3.metric("Prob. of Profit", f"{np.mean(np.array(option_pnl) > 0)*100:.1f}%")
     
