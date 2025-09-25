@@ -1743,4 +1743,3 @@ def show_equity_fundamentals_page():
 
 if __name__ == "__main__":
     show_equity_fundamentals_page()
-</invoke>
