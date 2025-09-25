@@ -21,15 +21,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- Navigation hint ---
-st.markdown("""
-<div class="navigation-hint">
-    <strong>🧭 Quick Navigation:</strong> Use the sidebar to explore our comprehensive financial tools, 
-    from basic option pricing to advanced institutional risk management frameworks.
-</div>
-""", unsafe_allow_html=True)
-
-
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Advanced Financial Analytics Platform",
@@ -219,19 +210,7 @@ with col6:
     jpy_bond_data = market_data["JPY 10Y Bond"]
     col6.metric("JPY 10Y Bond", f"{jpy_bond_data['value']:.2f}%", f"{jpy_bond_data['change']:+.2f}%")
 
-# --- Sidebar with LinkedIn ---
-with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 👤 Developer")
-    st.markdown("""
-    <div style="text-align: center; padding: 1rem;">
-        <a href="https://www.linkedin.com/in/c%C3%B4me-kasai-campagnolo-765b39244/" target="_blank" 
-           style="display: inline-block; background: #0077B5; color: white; padding: 0.5rem 1rem; 
-                  border-radius: 5px; text-decoration: none; font-weight: 500;">
-            🔗 LinkedIn Profile
-        </a>
-    </div>
-    """, unsafe_allow_html=True)
+# --- Navigation hint ---
 st.markdown("""
 <div class="navigation-hint">
     <strong>🧭 Quick Navigation:</strong> Use the sidebar to explore our comprehensive financial tools, 
@@ -263,14 +242,6 @@ with tab_derivatives:
                 Black-Scholes model with live market data integration, 
                 comprehensive Greeks analysis, sensitivity testing, 
                 and market price comparison.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Black-Scholes pricing</li>
-                    <li>Yahoo Finance integration</li>
-                    <li>Interactive Greeks</li>
-                    <li>Implied volatility</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -284,14 +255,6 @@ with tab_derivatives:
                 Sophisticated multi-asset portfolio construction with 
                 advanced Greeks management, delta hedging, gamma hedging, 
                 and correlation analysis tools.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Complex portfolios</li>
-                    <li>Dynamic hedging</li>
-                    <li>Institutional presets</li>
-                    <li>P&L visualization</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -305,14 +268,6 @@ with tab_derivatives:
                 Advanced volatility analysis with VIX integration, 
                 volatility surfaces, trading simulation, and 
                 comprehensive vol strategy backtesting.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Historical analysis</li>
-                    <li>Volatility cone</li>
-                    <li>Smile/Skew modeling</li>
-                    <li>Monte Carlo simulation</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -331,14 +286,6 @@ with tab_portfolio:
                 Complete swap valuation with dynamic yield curves, 
                 comprehensive sensitivity analysis, and sophisticated 
                 interest rate risk management tools.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Yield curve modeling</li>
-                    <li>Fair swap rate calculation</li>
-                    <li>DV01 analysis</li>
-                    <li>Scenario stress testing</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -352,14 +299,6 @@ with tab_portfolio:
                 Design and analyze complex structured products: 
                 reverse convertibles, autocallables, capital protection, 
                 and barrier options with full risk decomposition.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Monte Carlo pricing</li>
-                    <li>Component breakdown</li>
-                    <li>Risk analysis</li>
-                    <li>Stress scenarios</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -373,14 +312,6 @@ with tab_portfolio:
                 Advanced credit risk frameworks with Merton models, 
                 transition matrices, portfolio VaR, and comprehensive 
                 Basel III regulatory capital calculations.
-                <br><br>
-                <strong>Key Features:</strong>
-                <ul>
-                    <li>Structural models</li>
-                    <li>Portfolio VaR</li>
-                    <li>Stress testing</li>
-                    <li>Regulatory capital</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -399,18 +330,9 @@ with tab_markets:
                 Automated RSS feeds from major Japanese financial media 
                 with AI-powered summaries and sentiment analysis for 
                 comprehensive market intelligence.
-                <br><br>
-                <strong>News Sources:</strong>
-                <ul>
-                    <li>Forbes Japan</li>
-                    <li>Diamond Online</li>
-                    <li>Yahoo Finance Japan</li>
-                    <li>Mistral AI summaries</li>
-                </ul>
             </div>
         </div>
         """, unsafe_allow_html=True)
-
 
 # --- Upcoming Features ---
 st.subheader("🚀 Coming Soon")
@@ -426,14 +348,6 @@ with upcoming_col1:
             Comprehensive fixed income portfolio construction 
             with yield curve modeling, duration management, 
             and credit risk analysis.
-            <br><br>
-            <strong>Coming Features:</strong>
-            <ul>
-                <li>Bond portfolio optimization</li>
-                <li>Yield curve strategies</li>
-                <li>Credit spread analysis</li>
-                <li>Duration hedging</li>
-            </ul>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -447,14 +361,6 @@ with upcoming_col2:
             Advanced commodities analysis with futures 
             pricing models, seasonality patterns, and 
             supply-demand dynamics.
-            <br><br>
-            <strong>Coming Features:</strong>
-            <ul>
-                <li>Futures curve modeling</li>
-                <li>Seasonality analysis</li>
-                <li>Storage cost models</li>
-                <li>Spread strategies</li>
-            </ul>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -468,14 +374,6 @@ with upcoming_col3:
             Next-generation quantitative models including 
             Monte Carlo simulations, Jump Diffusion, 
             and stochastic volatility frameworks.
-            <br><br>
-            <strong>Coming Models:</strong>
-            <ul>
-                <li>Monte Carlo pricing</li>
-                <li>Jump Diffusion models</li>
-                <li>Stochastic volatility</li>
-                <li>Exotic derivatives</li>
-            </ul>
         </div>
     </div>
     """, unsafe_allow_html=True)
