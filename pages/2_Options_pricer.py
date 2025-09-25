@@ -429,11 +429,12 @@ def enhanced_options_page():
         st.write("**Profit & Loss Analysis at Expiration**")
         
         # P&L calculation
-        S_expiry = np.linspace(0, S*100, 100)
+        S_expiry = np.linspace(S*0.7, S*1.3, 100)
+        S_linspace = np.linspace(0, S*100, 100)
         option_pnl = []
         stock_pnl = []
         
-        for S_exp in S_expiry:
+        for S_exp in S_linspace:
             # Option P&L (assuming we bought the option)
             if option_type == 'call':
                 option_value_exp = max(0, S_exp - K)
