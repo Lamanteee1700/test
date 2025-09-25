@@ -410,27 +410,7 @@ with tab_markets:
             </div>
         </div>
         """, unsafe_allow_html=True)
-    
-    with market_col2:
-        st.markdown("""
-        <div class="feature-card">
-            <span class="feature-icon">📈</span>
-            <h4 class="feature-title">Technical Analysis Suite</h4>
-            <div class="feature-description">
-                Comprehensive technical analysis tools with advanced 
-                indicators, strategy backtesting, and quantitative 
-                market screening capabilities.
-                <br><br>
-                <strong>In Development:</strong>
-                <ul>
-                    <li>Advanced indicators</li>
-                    <li>Backtesting engine</li>
-                    <li>Stock screening</li>
-                    <li>Automated alerts</li>
-                </ul>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+
 
 # --- Upcoming Features ---
 st.subheader("🚀 Coming Soon")
