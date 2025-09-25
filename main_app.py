@@ -296,8 +296,7 @@ with tab_portfolio:
             <span class="feature-icon">🏗️</span>
             <h4 class="feature-title">Structured Products Builder</h4>
             <div class="feature-description">
-                Design and analyze complex structured products: 
-                reverse convertibles, autocallables, capital protection, 
+                Reverse convertibles, autocallables, capital protection, 
                 and barrier options with full risk decomposition.
             </div>
         </div>
