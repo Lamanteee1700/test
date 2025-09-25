@@ -1,14 +1,9 @@
-# pages/1_Japanese_market_news.py
+# pages/10_Japanese_market_news.py
 import streamlit as st
 import feedparser
 from mistralai import Mistral
 import re
 from datetime import datetime
-import yfinance as yf
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 # --- Configuration: Yahoo Japan Media Feeds ---
 JAPANESE_FINANCIAL_RSS_FEEDS = {
@@ -26,314 +21,6 @@ RSS_DESCRIPTIONS = {
     "Yahoo Business": "General business news and stock market updates in Japan.",
     "Finasee": "Finance-focused news with emphasis on stocks, investments, and market trends."
 }
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Japan Markets - Global Outlook & Recent News", layout="wide")
-
-# --- CSS for professional styling ---
-st.markdown("""
-<style>
-.main-header {
-    background: linear-gradient(135deg, #c94b4b 0%, #4b134f 100%);
-    padding: 2rem;
-    border-radius: 15px;
-    margin-bottom: 2rem;
-    text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.main-title {
-    color: white;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}
-
-.main-subtitle {
-    color: #f8d7da;
-    font-size: 1.1rem;
-    margin-bottom: 0;
-    opacity: 0.95;
-}
-
-.metric-card {
-    background: white;
-    border: 1px solid #e0e6ed;
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 0.5rem 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    text-align: center;
-}
-
-.section-header {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 1rem;
-    border-radius: 10px;
-    border-left: 4px solid #c94b4b;
-    margin: 1.5rem 0 1rem 0;
-}
-
-.outlook-box {
-    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-    padding: 1.2rem;
-    border-radius: 10px;
-    border-left: 4px solid #856404;
-    margin: 1rem 0;
-}
-
-.risk-box {
-    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
-    padding: 1.2rem;
-    border-radius: 10px;
-    border-left: 4px solid #721c24;
-    margin: 1rem 0;
-}
-
-.opportunity-box {
-    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
-    padding: 1.2rem;
-    border-radius: 10px;
-    border-left: 4px solid #0c5460;
-    margin: 1rem 0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# --- Header ---
-st.markdown("""
-<div class="main-header">
-    <h1 class="main-title">🏯 Japan Markets - Global Outlook & Recent News</h1>
-    <p class="main-subtitle">
-        Comprehensive analysis of Japanese markets with global perspective and AI-curated financial news
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-# --- Market Data Functions ---
-def get_japan_market_data():
-    """Fetch Japan-specific market data"""
-    try:
-        tickers = {
-            "Nikkei 225": "^N225",
-            "TOPIX": "^TPX",
-            "USD/JPY": "USDJPY=X",
-            "JPY 10Y Bond": "^TNX",  # Placeholder
-            "Japan VIX": "^N225",    # Using Nikkei as proxy
-        }
-        
-        market_data = {}
-        for name, ticker in tickers.items():
-            try:
-                data = yf.Ticker(ticker).history(period="5d")
-                if not data.empty:
-                    current = data["Close"].iloc[-1]
-                    prev = data["Close"].iloc[-2] if len(data) > 1 else current
-                    change_pct = (current - prev) / prev * 100
-                    
-                    # Special handling for JPY bonds (inverted for yield)
-                    if "Bond" in name:
-                        current = 1.1  # Placeholder yield
-                        change_pct = 0.05
-                    
-                    market_data[name] = {"value": current, "change": change_pct}
-            except:
-                # Fallback data
-                fallback_data = {
-                    "Nikkei 225": {"value": 38500, "change": 1.2},
-                    "TOPIX": {"value": 2650, "change": 0.8},
-                    "USD/JPY": {"value": 148.5, "change": 0.3},
-                    "JPY 10Y Bond": {"value": 1.1, "change": 0.05},
-                    "Japan VIX": {"value": 22.5, "change": -1.5}
-                }
-                market_data[name] = fallback_data.get(name, {"value": 0, "change": 0})
-        
-        return market_data
-    except:
-        return {
-            "Nikkei 225": {"value": 38500, "change": 1.2},
-            "TOPIX": {"value": 2650, "change": 0.8}, 
-            "USD/JPY": {"value": 148.5, "change": 0.3},
-            "JPY 10Y Bond": {"value": 1.1, "change": 0.05},
-            "Japan VIX": {"value": 22.5, "change": -1.5}
-        }
-
-# --- Japanese Market Dashboard ---
-st.markdown("""
-<div class="section-header">
-    <h3 style="margin: 0; color: #2c3e50;">📊 Japanese Market Dashboard</h3>
-</div>
-""", unsafe_allow_html=True)
-
-market_data = get_japan_market_data()
-
-# Display market metrics in two rows
-col1, col2, col3 = st.columns(3)
-col4, col5, col6 = st.columns(3)
-
-with col1:
-    nikkei_data = market_data["Nikkei 225"]
-    st.metric("Nikkei 225", f"{nikkei_data['value']:.0f}", f"{nikkei_data['change']:+.2f}%")
-
-with col2:
-    topix_data = market_data["TOPIX"]
-    st.metric("TOPIX", f"{topix_data['value']:.0f}", f"{topix_data['change']:+.2f}%")
-
-with col3:
-    jpy_data = market_data["USD/JPY"]
-    st.metric("USD/JPY", f"{jpy_data['value']:.1f}", f"{jpy_data['change']:+.2f}%")
-
-with col4:
-    bond_data = market_data["JPY 10Y Bond"]
-    st.metric("JPY 10Y Yield", f"{bond_data['value']:.2f}%", f"{bond_data['change']:+.2f}%")
-
-with col5:
-    vix_data = market_data["Japan VIX"]
-    st.metric("Japan Vol Index", f"{vix_data['value']:.1f}", f"{vix_data['change']:+.2f}%")
-
-with col6:
-    # Add time display
-    st.metric("Market Time", datetime.now().strftime("%H:%M JST"), "Live")
-
-# === GLOBAL MARKET OUTLOOK ===
-st.markdown("---")
-st.markdown("""
-<div class="section-header">
-    <h3 style="margin: 0; color: #2c3e50;">🌍 Global Market Outlook & Japan Investment Perspective</h3>
-</div>
-""", unsafe_allow_html=True)
-
-outlook_col1, outlook_col2 = st.columns(2)
-
-with outlook_col1:
-    st.markdown("#### Japan's Strategic Position")
-    
-    st.markdown("""
-    <div class="outlook-box">
-        <h5 style="color: #856404; margin-top: 0;">Macro Stability Amid Global Uncertainty</h5>
-        <p style="margin-bottom: 0;">
-        Japan maintains relative stability as global trade tensions escalate. Despite potential tariff risks, 
-        the country's economic fundamentals remain solid with continued wage growth averaging 2.8% in H2 2024 
-        and inflation stabilizing around target levels after decades of deflation.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    **Key Supportive Factors:**
-    - **Mild Reflation Success**: Fourth consecutive year of 2%+ inflation
-    - **Corporate Governance Revolution**: Share buybacks up 96% year-over-year
-    - **Tourism Boom**: Record 36.87 million visitors contributing 7.5% of GDP
-    - **Capital Investment**: Accelerating capex spending amid AI and productivity focus
-    """)
-    
-    st.markdown("""
-    **Trade Relationship Dynamics**
-    
-    The US-Japan relationship appears stable under current leadership, with recent meetings suggesting 
-    Japan may avoid targeted tariffs. Japan's bilateral trade surplus with the US has moderately 
-    declined over two decades and remains smaller relative to China and Europe deficits.
-    """)
-
-with outlook_col2:
-    st.markdown("#### Market Positioning & Outlook")
-    
-    st.markdown("""
-    <div class="opportunity-box">
-        <h5 style="color: #0c5460; margin-top: 0;">Equity Market Investment Thesis</h5>
-        <p style="margin-bottom: 0;">
-        Japanese equities remain attractive despite two consecutive years of 20%+ returns. 
-        The market continues to offer value with TOPIX trading at P/E ratios 30% below 
-        the S&P 500, while corporate earnings have matched US performance since 2010.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    **Multi-Year Investment Drivers:**
-    - **Sustainable Inflation**: Breaking decades of deflationary mindset
-    - **Corporate Reform**: Improved ROE and shareholder-friendly policies  
-    - **Under-Ownership**: International and domestic investors remain underweight
-    """)
-    
-    # Market outlook metrics
-    st.markdown("""
-    <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 3px solid #28a745;">
-        <strong>📈 2025 Market Expectations:</strong><br>
-        • TOPIX Target: 3,075 - 3,175 (low-teens upside)<br>
-        • Earnings Growth: 9.0% (2025), 8.5% (2026)<br>
-        • Forward P/E Multiple: 15x<br>
-        • Preferred Sectors: Financials, Industrials, Consumer Discretionary
-    </div>
-    """, unsafe_allow_html=True)
-
-# Policy and Currency Section
-st.markdown("#### Monetary Policy & Currency Dynamics")
-
-policy_col1, policy_col2 = st.columns(2)
-
-with policy_col1:
-    st.markdown("""
-    **Bank of Japan Strategy**
-    
-    The BoJ maintains a gradual normalization path following its recent 25bp hike. 
-    While some board members advocate for bringing rates to 1% (near neutral range), 
-    current economic conditions don't suggest urgency for aggressive tightening.
-    
-    **Policy Considerations:**
-    - Stable wage growth supporting reflation cycle
-    - Global uncertainty favoring cautious approach  
-    - Political pressure for JPY strength balanced against economic needs
-    """)
-
-with policy_col2:
-    st.markdown("""
-    **Currency Outlook**
-    
-    The Japanese yen has emerged as a top performer among major currencies, 
-    though movements remain closely tied to US Treasury yield changes. 
-    Further JPY strength likely requires additional US rate declines.
-    
-    **Investment Implications:**
-    - Increasingly comfortable with unhedged Japanese equity exposure
-    - JPY serves as natural hedge against weaker global risk sentiment
-    - Defensive positioning amid geopolitical uncertainties
-    """)
-
-# Risk Assessment
-st.markdown("#### Risk Assessment & Strategic Considerations")
-
-risk_col1, risk_col2 = st.columns(2)
-
-with risk_col1:
-    st.markdown("""
-    <div class="risk-box">
-        <h5 style="color: #721c24; margin-top: 0;">⚠️ Key Risks to Monitor</h5>
-        <ul style="margin-bottom: 0;">
-            <li>Global trade policy escalation despite current US-Japan stability</li>
-            <li>Spillover effects from broader trade uncertainty affecting business investment</li>
-            <li>Consumption recovery pace dependent on sustained wage growth</li>
-            <li>Manufacturing PMI recovery sustainability for earnings acceleration</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with risk_col2:
-    st.markdown("""
-    <div class="opportunity-box">
-        <h5 style="color: #0c5460; margin-top: 0;">✅ Strategic Opportunities</h5>
-        <ul style="margin-bottom: 0;">
-            <li>Structural undervaluation relative to global peers</li>
-            <li>Corporate governance improvements driving shareholder returns</li>
-            <li>Productivity investments potentially breaking growth ceiling</li>
-            <li>Tourism sector providing sustained economic support</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-# === NEWS SECTION (keeping the same) ===
-st.markdown("---")
 
 # --- Fetch RSS with caching ---
 @st.cache_data(show_spinner=False, ttl=1800)  # Cache for 30 minutes
@@ -540,40 +227,49 @@ def parse_ai_summary(summary_text):
     
     return cleaned_articles[:8]  # Limit to 8 articles max
 
-st.markdown("""
-<div class="section-header">
-    <h3 style="margin: 0; color: #2c3e50;">📰 AI-Curated Japanese Financial News</h3>
-    <p style="margin: 0.5rem 0 0 0; color: #6c757d;">Latest financial news from major Japanese media sources, analyzed and summarized by AI</p>
-</div>
-""", unsafe_allow_html=True)
-
-# Sources information
-with st.expander("📡 News Sources", expanded=False):
-    st.markdown("**Monitored Sources:**")
+# --- Streamlit Page Function ---
+def show_japan_news_page():
+    st.set_page_config(page_title="Japanese Market News", layout="wide")
     
-    # Create a nice table for sources
-    source_data = []
-    for source, description in RSS_DESCRIPTIONS.items():
-        source_data.append({
-            "Source": source,
-            "Description": description
-        })
-    
-    st.dataframe(
-        source_data, 
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    st.info("💡 News is updated every 30 minutes. AI summaries focus on the most financially relevant articles.")
+    # Header
+    st.title("📰 Japanese Market News")
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%); padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
+        <h3 style="color: white; margin: 0;">AI-Curated Financial News from Japan</h3>
+        <p style="color: #e6f3ff; margin: 0.5rem 0 0 0;">
+            Latest financial news from Yahoo Japan media sources, analyzed and summarized by Mistral AI
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Fetch news with loading indicator
-with st.spinner("🔄 Fetching latest news..."):
-    news_items = fetch_news_rss(list(JAPANESE_FINANCIAL_RSS_FEEDS.values()), top_n=30)
+    # Sources information
+    with st.expander("📡 News Sources", expanded=False):
+        st.markdown("**Monitored Sources:**")
+        
+        # Create a nice table for sources
+        source_data = []
+        for source, description in RSS_DESCRIPTIONS.items():
+            source_data.append({
+                "Source": source,
+                "Description": description
+            })
+        
+        st.dataframe(
+            source_data, 
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        st.info("💡 News is updated every 30 minutes. AI summaries focus on the most financially relevant articles.")
 
-if not news_items:
-    st.error("❌ No news articles could be retrieved at this time. Please try again later.")
-else:
+    # Fetch news with loading indicator
+    with st.spinner("🔄 Fetching latest news..."):
+        news_items = fetch_news_rss(list(JAPANESE_FINANCIAL_RSS_FEEDS.values()), top_n=30)
+
+    if not news_items:
+        st.error("❌ No news articles could be retrieved at this time. Please try again later.")
+        return
+
     st.success(f"✅ Retrieved {len(news_items)} articles from {len(JAPANESE_FINANCIAL_RSS_FEEDS)} sources")
 
     # Generate AI summary with progress
@@ -593,95 +289,90 @@ else:
                 st.write(f"**Source:** {item.get('source', 'Unknown')}")
                 st.write(f"**Summary:** {getattr(item, 'summary', 'No summary available')[:300]}...")
                 st.write(f"**Link:** {item.link}")
-    else:
-        # Parse the summary into structured articles
-        articles = parse_ai_summary(ai_summary)
+        return
 
-        if not articles:
-            # Show debugging info and raw content
-            st.warning("⚠️ Could not parse AI summary into structured articles.")
+    # Parse the summary into structured articles
+    articles = parse_ai_summary(ai_summary)
+
+    if not articles:
+        # Show debugging info and raw content
+        st.warning("⚠️ Could not parse AI summary into structured articles.")
+        
+        # Show the raw summary for debugging
+        with st.expander("🔍 Debug: Raw AI Response", expanded=True):
+            st.text_area("Raw AI Summary:", ai_summary, height=300)
+        
+        # Try to show something useful
+        st.markdown("**Raw Summary:**")
+        st.markdown(ai_summary)
+        return
+
+    # Display articles in a nice layout
+    st.subheader(f"📈 Top Financial News ({len(articles)} articles)")
+    
+    # Display articles in cards
+    for i, article in enumerate(articles):
+        if not article.get('headline'):
+            continue
             
-            # Show the raw summary for debugging
-            with st.expander("🔍 Debug: Raw AI Response", expanded=True):
-                st.text_area("Raw AI Summary:", ai_summary, height=300)
-            
-            # Try to show something useful
-            st.markdown("**Raw Summary:**")
-            st.markdown(ai_summary)
+        # Determine icon based on content
+        headline_lower = article['headline'].lower()
+        if any(word in headline_lower for word in ['株', 'stock', '市場', 'market', '上昇', '下落']):
+            icon = "📈"
+        elif any(word in headline_lower for word in ['企業', 'company', '決算', 'earnings']):
+            icon = "🏢" 
+        elif any(word in headline_lower for word in ['銀行', 'bank', '金融', 'finance']):
+            icon = "🏦"
+        elif any(word in headline_lower for word in ['政策', 'policy', '政府', 'government']):
+            icon = "🏛️"
         else:
-            # Display articles in cards
-            for i, article in enumerate(articles):
-                if not article.get('headline'):
-                    continue
-                    
-                # Determine icon based on content
-                headline_lower = article['headline'].lower()
-                if any(word in headline_lower for word in ['株', 'stock', '市場', 'market', '上昇', '下落']):
-                    icon = "📈"
-                elif any(word in headline_lower for word in ['企業', 'company', '決算', 'earnings']):
-                    icon = "🏢" 
-                elif any(word in headline_lower for word in ['銀行', 'bank', '金融', 'finance']):
-                    icon = "🏦"
-                elif any(word in headline_lower for word in ['政策', 'policy', '政府', 'government']):
-                    icon = "🏛️"
-                else:
-                    icon = "💼"
-                
-                # Create article card
-                with st.container():
-                    st.markdown(f"""
-                    <div style="
-                        background: white;
-                        border: 1px solid #e0e0e0;
-                        border-radius: 12px;
-                        padding: 1.5rem;
-                        margin: 1rem 0;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        border-left: 4px solid #c94b4b;
-                    ">
-                        <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                            <div style="font-size: 2rem; margin-top: 0.2rem;">{icon}</div>
-                            <div style="flex: 1;">
-                                <h4 style="margin: 0 0 0.8rem 0; color: #4b134f; font-size: 1.1rem; line-height: 1.3;">
-                                    {article['headline']}
-                                </h4>
-                                <p style="margin: 0 0 1rem 0; color: #333; line-height: 1.5; font-size: 0.95rem;">
-                                    {article['summary']}
-                                </p>
-                                {f'<a href="{article["link"]}" target="_blank" style="color: #c94b4b; text-decoration: none; font-weight: 500; font-size: 0.9rem;">🔗 Read full article</a>' if article.get('link') else ''}
-                            </div>
-                        </div>
+            icon = "💼"
+        
+        # Create article card
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                border-left: 4px solid #2a5298;
+            ">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div style="font-size: 2rem; margin-top: 0.2rem;">{icon}</div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 0.8rem 0; color: #1e3c72; font-size: 1.1rem; line-height: 1.3;">
+                            {article['headline']}
+                        </h4>
+                        <p style="margin: 0 0 1rem 0; color: #333; line-height: 1.5; font-size: 0.95rem;">
+                            {article['summary']}
+                        </p>
+                        {f'<a href="{article["link"]}" target="_blank" style="color: #2a5298; text-decoration: none; font-weight: 500; font-size: 0.9rem;">🔗 Read full article</a>' if article.get('link') else ''}
                     </div>
-                    """, unsafe_allow_html=True)
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-# Add refresh button and timestamp
-col1, col2, col3 = st.columns([1, 1, 1])
-
-with col2:
-    if st.button("🔄 Refresh News", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
-# Source attribution
-st.markdown("---")
-st.markdown("""
-<div style="font-size: 0.9rem; color: #6c757d; font-style: italic; text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
-    <strong>Sources:</strong> Analysis based on insights from J.P. Morgan Private Bank Asia Investment Strategy, 
-    "Why Japan remains one of our top calls" (February 13, 2025). Market data integrated from Yahoo Finance API.
-    News content aggregated from Yahoo Japan RSS feeds and summarized using Mistral AI.
-</div>
-""", unsafe_allow_html=True)
-
-# Footer with timestamp
-current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S JST")
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; color: #666; font-size: 0.9rem;">
-    <p><strong>Last Updated:</strong> {current_time}</p>
-    <p><strong>Japan Markets - Global Outlook & Recent News</strong> | Professional platform for Japanese market analysis</p>
-    <p>Built with Streamlit • Python • Yahoo Finance • Mistral AI</p>
-</div>
-""", unsafe_allow_html=True)
+    # Add refresh button and timestamp
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col2:
+        if st.button("🔄 Refresh News", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    
+    # Footer with timestamp
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S JST")
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="text-align: center; color: #666; font-size: 0.9rem;">
+        <p><strong>Last Updated:</strong> {current_time}</p>
+        <p><strong>Financial Derivatives Dashboard</strong> | Educational platform for options, swaps, and structured products analysis</p>
+        <p>Built with Streamlit • Powered by Yahoo Finance & Mistral AI</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- Run page independently ---
 if __name__ == "__main__":
