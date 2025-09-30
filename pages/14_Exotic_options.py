@@ -977,56 +977,5 @@ def exotic_options_page():
         
         **Current Difference:** ${price_diff:+.4f} ({price_diff_pct:+.1f}%)
         """)
-    
-    # === EDUCATIONAL SECTION ===
-    st.markdown("---")
-    with st.expander("📚 Learn More About Exotic Options"):
-        st.markdown("""
-        ### What Are Exotic Options?
-        
-        Exotic options are derivatives with more complex features than standard vanilla options. They offer:
-        - **Customization** for specific hedging needs
-        - **Cost efficiency** for targeted exposures
-        - **Enhanced returns** through structured payoffs
-        
-        ### Common Applications:
-        
-        **Asian Options:**
-        - Commodity hedging (oil, metals)
-        - FX forwards with average rates
-        - Reducing manipulation risk in thinly traded assets
-        
-        **Barrier Options:**
-        - Reducing premium costs with knock-outs
-        - Structured products
-        - Currency hedging with risk limits
-        
-        **Lookback Options:**
-        - Eliminating timing risk
-        - Performance-based compensation
-        - Maximizing/minimizing prices over period
-        
-        **Binary Options:**
-        - Event-driven strategies
-        - All-or-nothing bets
-        - Short-term speculation
-        
-        **Chooser Options:**
-        - Uncertain market direction
-        - Pre-earnings flexibility
-        - Volatility trading
-        
-        **Rainbow Options:**
-        - Multi-asset portfolios
-        - Worst-of/best-of structures
-        - Correlation trading
-        
-        ### ⚠️ Risks:
-        - More complex to understand and value
-        - Less liquid than vanilla options
-        - Model risk in pricing
-        - Path dependency can lead to unexpected outcomes
-        """)
-
 if __name__ == "__main__":
     exotic_options_page()
