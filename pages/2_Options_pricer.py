@@ -863,29 +863,462 @@ def options_page():
             st.error(f"Error fetching market data: {str(e)}")
             use_live_data = False
     
-    # === IMPLIED VOLATILITY SECTION ===
-    st.subheader("🔍 Implied Volatility Analysis")
+# === IMPLIED VOLATILITY SECTION ===
+st.subheader("🔍 Advanced Implied Volatility Analysis")
+
+# Add option to fetch live IV data
+iv_data_mode = st.radio(
+    "IV Data Source",
+    ["Manual Entry", "Live Market Data (IV Surface)"],
+    horizontal=True,
+    help="Choose to manually enter a price or fetch live options chain data"
+)
+
+if iv_data_mode == "Live Market Data (IV Surface)":
+    st.info("📡 Fetching live options chain to calculate implied volatility surface and time series")
+    
+    try:
+        import yfinance as yf
+        
+        # Get available expiration dates
+        stock = yf.Ticker(ticker)
+        exp_dates = stock.options
+        
+        if not exp_dates or len(exp_dates) == 0:
+            st.warning("No options data available for this ticker. Please use Manual Entry mode.")
+        else:
+            # Let user select expiration dates
+            iv_exp_col1, iv_exp_col2 = st.columns(2)
+            
+            with iv_exp_col1:
+                # Show available expirations with days to expiry
+                exp_options = []
+                for exp_str in exp_dates[:12]:  # Show first 12 expirations
+                    exp_dt = pd.to_datetime(exp_str)
+                    days_to_exp = (exp_dt - pd.Timestamp.now()).days
+                    exp_options.append(f"{exp_str} ({days_to_exp}d)")
+                
+                selected_exp_display = st.selectbox(
+                    "Select Expiration Date",
+                    exp_options,
+                    help="Choose expiration for IV analysis"
+                )
+                
+                # Extract actual date from display string
+                selected_exp = selected_exp_display.split(" (")[0]
+                selected_exp_dt = pd.to_datetime(selected_exp)
+                days_to_selected_exp = (selected_exp_dt - pd.Timestamp.now()).days
+                T_selected = days_to_selected_exp / 365
+            
+            with iv_exp_col2:
+                # Option type for IV analysis
+                iv_option_type = st.selectbox(
+                    "Option Type for IV",
+                    ["call", "put"],
+                    index=0 if option_type == "call" else 1
+                )
+            
+            # Fetch options chain
+            with st.spinner(f"Fetching {iv_option_type} options chain for {selected_exp}..."):
+                try:
+                    opt_chain = stock.option_chain(selected_exp)
+                    
+                    if iv_option_type == "call":
+                        chain_df = opt_chain.calls
+                    else:
+                        chain_df = opt_chain.puts
+                    
+                    # Filter out options with zero bid/ask
+                    chain_df = chain_df[
+                        (chain_df['bid'] > 0) & 
+                        (chain_df['ask'] > 0) &
+                        (chain_df['volume'] > 0)
+                    ].copy()
+                    
+                    if len(chain_df) == 0:
+                        st.warning("No liquid options found for this expiration.")
+                    else:
+                        # Calculate IV for each strike
+                        chain_df['mid_price'] = (chain_df['bid'] + chain_df['ask']) / 2
+                        chain_df['implied_vol'] = np.nan
+                        
+                        for idx, row in chain_df.iterrows():
+                            try:
+                                def option_price_diff(vol):
+                                    return bs_price(S, row['strike'], T_selected, r, vol, iv_option_type) - row['mid_price']
+                                
+                                iv = brentq(option_price_diff, 0.001, 5.0)
+                                chain_df.at[idx, 'implied_vol'] = iv
+                            except:
+                                chain_df.at[idx, 'implied_vol'] = np.nan
+                        
+                        # Remove failed calculations
+                        chain_df = chain_df.dropna(subset=['implied_vol'])
+                        chain_df = chain_df[chain_df['implied_vol'] > 0]
+                        
+                        if len(chain_df) > 0:
+                            # Calculate moneyness
+                            chain_df['moneyness'] = chain_df['strike'] / S
+                            
+                            st.success(f"✅ Calculated IV for {len(chain_df)} strikes")
+                            
+                            # Display IV metrics
+                            iv_metrics_col1, iv_metrics_col2, iv_metrics_col3, iv_metrics_col4 = st.columns(4)
+                            
+                            iv_metrics_col1.metric("Min IV", f"{chain_df['implied_vol'].min():.1%}")
+                            iv_metrics_col2.metric("Max IV", f"{chain_df['implied_vol'].max():.1%}")
+                            iv_metrics_col3.metric("Mean IV", f"{chain_df['implied_vol'].mean():.1%}")
+                            iv_metrics_col4.metric("ATM IV", f"{chain_df.iloc[(chain_df['moneyness'] - 1).abs().argsort()[:1]]['implied_vol'].values[0]:.1%}")
+                            
+                            # === IV SMILE/SKEW CHART ===
+                            st.markdown("---")
+                            st.write("**📈 Implied Volatility Smile/Skew**")
+                            
+                            fig_iv_smile = go.Figure()
+                            
+                            # Plot IV vs Strike
+                            fig_iv_smile.add_trace(go.Scatter(
+                                x=chain_df['strike'],
+                                y=chain_df['implied_vol'] * 100,
+                                mode='markers+lines',
+                                name='Implied Volatility',
+                                marker=dict(size=8, color=chain_df['volume'], colorscale='Viridis', 
+                                          showscale=True, colorbar=dict(title="Volume")),
+                                line=dict(color='blue', width=2)
+                            ))
+                            
+                            # Add current stock price line
+                            fig_iv_smile.add_vline(x=S, line_dash="dash", line_color="red",
+                                                  annotation_text="Current Price")
+                            
+                            # Add historical volatility line if available
+                            if online_vol_available:
+                                fig_iv_smile.add_hline(y=hist_vol * 100, line_dash="dot", 
+                                                      line_color="green",
+                                                      annotation_text="Historical Vol")
+                            
+                            fig_iv_smile.update_layout(
+                                title=f"IV Smile/Skew - {iv_option_type.title()} Options ({selected_exp})",
+                                xaxis_title="Strike Price ($)",
+                                yaxis_title="Implied Volatility (%)",
+                                height=500,
+                                hovermode='x unified'
+                            )
+                            
+                            st.plotly_chart(fig_iv_smile, use_container_width=True)
+                            
+                            # === IV TIME SERIES (Multiple Expirations) ===
+                            st.markdown("---")
+                            st.write("**📊 IV Term Structure (Time Series)**")
+                            
+                            with st.spinner("Fetching IV across multiple expirations..."):
+                                iv_term_data = []
+                                
+                                # Select ATM or user-specified moneyness
+                                term_moneyness = st.slider(
+                                    "Moneyness for Term Structure",
+                                    0.8, 1.2, 1.0, 0.05,
+                                    help="1.0 = ATM, <1.0 = OTM calls/ITM puts, >1.0 = ITM calls/OTM puts"
+                                )
+                                
+                                target_strike = S * term_moneyness
+                                
+                                for exp_date in exp_dates[:8]:  # Limit to 8 expirations for performance
+                                    try:
+                                        exp_dt = pd.to_datetime(exp_date)
+                                        days_exp = (exp_dt - pd.Timestamp.now()).days
+                                        T_exp = days_exp / 365
+                                        
+                                        opt_chain_exp = stock.option_chain(exp_date)
+                                        chain_exp = opt_chain_exp.calls if iv_option_type == "call" else opt_chain_exp.puts
+                                        
+                                        # Find closest strike to target
+                                        chain_exp = chain_exp[
+                                            (chain_exp['bid'] > 0) & 
+                                            (chain_exp['ask'] > 0)
+                                        ].copy()
+                                        
+                                        if len(chain_exp) > 0:
+                                            closest_idx = (chain_exp['strike'] - target_strike).abs().idxmin()
+                                            closest_row = chain_exp.loc[closest_idx]
+                                            
+                                            mid_price = (closest_row['bid'] + closest_row['ask']) / 2
+                                            
+                                            try:
+                                                def price_diff(vol):
+                                                    return bs_price(S, closest_row['strike'], T_exp, r, vol, iv_option_type) - mid_price
+                                                
+                                                iv_val = brentq(price_diff, 0.001, 5.0)
+                                                
+                                                iv_term_data.append({
+                                                    'expiration': exp_date,
+                                                    'days_to_expiry': days_exp,
+                                                    'strike': closest_row['strike'],
+                                                    'iv': iv_val,
+                                                    'volume': closest_row['volume'],
+                                                    'open_interest': closest_row['openInterest']
+                                                })
+                                            except:
+                                                pass
+                                    except:
+                                        pass
+                                
+                                if len(iv_term_data) > 0:
+                                    iv_term_df = pd.DataFrame(iv_term_data)
+                                    
+                                    # Plot IV term structure
+                                    fig_iv_term = go.Figure()
+                                    
+                                    fig_iv_term.add_trace(go.Scatter(
+                                        x=iv_term_df['days_to_expiry'],
+                                        y=iv_term_df['iv'] * 100,
+                                        mode='markers+lines',
+                                        name='Implied Volatility',
+                                        marker=dict(size=10, color='blue'),
+                                        line=dict(color='blue', width=3)
+                                    ))
+                                    
+                                    # Add HV line if available
+                                    if online_vol_available:
+                                        fig_iv_term.add_hline(
+                                            y=hist_vol * 100,
+                                            line_dash="dash",
+                                            line_color="green",
+                                            annotation_text="Historical Volatility"
+                                        )
+                                    
+                                    fig_iv_term.update_layout(
+                                        title=f"IV Term Structure - {iv_option_type.title()} Options (Moneyness: {term_moneyness:.0%})",
+                                        xaxis_title="Days to Expiration",
+                                        yaxis_title="Implied Volatility (%)",
+                                        height=400
+                                    )
+                                    
+                                    st.plotly_chart(fig_iv_term, use_container_width=True)
+                                    
+                                    # Display term structure table
+                                    with st.expander("📋 View IV Term Structure Data"):
+                                        display_df = iv_term_df.copy()
+                                        display_df['iv'] = display_df['iv'].apply(lambda x: f"{x:.2%}")
+                                        display_df['strike'] = display_df['strike'].apply(lambda x: f"${x:.2f}")
+                                        st.dataframe(display_df, use_container_width=True)
+                                else:
+                                    st.warning("Could not calculate IV term structure. Try different moneyness level.")
+                            
+                            # === 3D IV SURFACE ===
+                            st.markdown("---")
+                            st.write("**🎲 3D Implied Volatility Surface**")
+                            
+                            with st.spinner("Building 3D IV surface..."):
+                                # Collect IV data across strikes and expirations
+                                surface_data = []
+                                
+                                for exp_date in exp_dates[:6]:  # Limit to 6 expirations
+                                    try:
+                                        exp_dt = pd.to_datetime(exp_date)
+                                        days_exp = (exp_dt - pd.Timestamp.now()).days
+                                        T_exp = days_exp / 365
+                                        
+                                        opt_chain_exp = stock.option_chain(exp_date)
+                                        chain_exp = opt_chain_exp.calls if iv_option_type == "call" else opt_chain_exp.puts
+                                        
+                                        chain_exp = chain_exp[
+                                            (chain_exp['bid'] > 0) & 
+                                            (chain_exp['ask'] > 0) &
+                                            (chain_exp['volume'] > 0)
+                                        ].copy()
+                                        
+                                        for idx, row in chain_exp.iterrows():
+                                            try:
+                                                mid_price = (row['bid'] + row['ask']) / 2
+                                                
+                                                def price_diff(vol):
+                                                    return bs_price(S, row['strike'], T_exp, r, vol, iv_option_type) - mid_price
+                                                
+                                                iv_val = brentq(price_diff, 0.001, 5.0)
+                                                
+                                                surface_data.append({
+                                                    'strike': row['strike'],
+                                                    'days_to_expiry': days_exp,
+                                                    'moneyness': row['strike'] / S,
+                                                    'iv': iv_val
+                                                })
+                                            except:
+                                                pass
+                                    except:
+                                        pass
+                                
+                                if len(surface_data) > 10:
+                                    surface_df = pd.DataFrame(surface_data)
+                                    
+                                    # Create pivot table for surface
+                                    pivot_strikes = sorted(surface_df['strike'].unique())
+                                    pivot_days = sorted(surface_df['days_to_expiry'].unique())
+                                    
+                                    # Create mesh grid
+                                    Z_iv = []
+                                    for day in pivot_days:
+                                        row_data = []
+                                        for strike in pivot_strikes:
+                                            matching = surface_df[
+                                                (surface_df['strike'] == strike) & 
+                                                (surface_df['days_to_expiry'] == day)
+                                            ]
+                                            if len(matching) > 0:
+                                                row_data.append(matching.iloc[0]['iv'] * 100)
+                                            else:
+                                                row_data.append(np.nan)
+                                        Z_iv.append(row_data)
+                                    
+                                    Z_iv = np.array(Z_iv)
+                                    X_strikes, Y_days = np.meshgrid(pivot_strikes, pivot_days)
+                                    
+                                    # Create 3D surface
+                                    fig_iv_surface = go.Figure(data=[go.Surface(
+                                        x=X_strikes,
+                                        y=Y_days,
+                                        z=Z_iv,
+                                        colorscale='Plasma',
+                                        colorbar=dict(title="IV (%)"),
+                                        contours={
+                                            "z": {"show": True, "usecolormap": True, 
+                                                 "highlightcolor": "limegreen", "project": {"z": True}}
+                                        }
+                                    )])
+                                    
+                                    # Add current position marker if applicable
+                                    if T_days in pivot_days or abs(T_days - min(pivot_days, key=lambda x: abs(x - T_days))) < 5:
+                                        closest_day = min(pivot_days, key=lambda x: abs(x - T_days))
+                                        closest_strike = min(pivot_strikes, key=lambda x: abs(x - K))
+                                        
+                                        # Find IV at this point
+                                        matching_iv = surface_df[
+                                            (abs(surface_df['strike'] - closest_strike) < 0.5) &
+                                            (abs(surface_df['days_to_expiry'] - closest_day) < 2)
+                                        ]
+                                        
+                                        if len(matching_iv) > 0:
+                                            fig_iv_surface.add_trace(go.Scatter3d(
+                                                x=[closest_strike],
+                                                y=[closest_day],
+                                                z=[matching_iv.iloc[0]['iv'] * 100],
+                                                mode='markers',
+                                                marker=dict(size=8, color='red', symbol='diamond'),
+                                                name='Your Position',
+                                                showlegend=True
+                                            ))
+                                    
+                                    fig_iv_surface.update_layout(
+                                        title=f"Implied Volatility Surface - {iv_option_type.title()} Options",
+                                        scene=dict(
+                                            xaxis=dict(title='Strike Price ($)', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                                            yaxis=dict(title='Days to Expiry', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                                            zaxis=dict(title='Implied Volatility (%)', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                                            camera=dict(eye=dict(x=1.5, y=1.5, z=1.3))
+                                        ),
+                                        height=700,
+                                        margin=dict(l=0, r=0, b=0, t=80)
+                                    )
+                                    
+                                    st.plotly_chart(fig_iv_surface, use_container_width=True)
+                                    
+                                    # IV Surface insights
+                                    insights_col1, insights_col2 = st.columns(2)
+                                    
+                                    with insights_col1:
+                                        st.markdown("""
+                                        **🔍 IV Surface Interpretation:**
+                                        - **Volatility Smile:** IV typically higher for OTM options (wings)
+                                        - **Volatility Skew:** Asymmetry between put and call IV
+                                        - **Surface shows market's expected price distribution**
+                                        """)
+                                    
+                                    with insights_col2:
+                                        st.markdown("""
+                                        **📊 Trading Insights:**
+                                        - **High IV areas:** Expensive options, potential credit strategies
+                                        - **Low IV areas:** Cheap options, potential debit strategies
+                                        - **IV vs HV:** Compare to historical volatility for relative value
+                                        """)
+                                    
+                                    # Add IV vs HV comparison if available
+                                    if online_vol_available:
+                                        st.markdown("---")
+                                        st.write("**📉 IV vs Historical Volatility Comparison**")
+                                        
+                                        # Calculate average IV across the surface
+                                        avg_iv = surface_df['iv'].mean()
+                                        
+                                        comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
+                                        comparison_col1.metric("Average IV", f"{avg_iv:.2%}")
+                                        comparison_col2.metric("Historical Vol (20d)", f"{hist_vol:.2%}")
+                                        
+                                        iv_hv_ratio = avg_iv / hist_vol
+                                        comparison_col3.metric("IV/HV Ratio", f"{iv_hv_ratio:.2f}x")
+                                        
+                                        # Interpretation
+                                        if iv_hv_ratio > 1.2:
+                                            st.warning("🔺 **High IV Environment:** Options are expensive relative to historical volatility. Consider credit strategies or selling premium.")
+                                        elif iv_hv_ratio < 0.8:
+                                            st.info("🔻 **Low IV Environment:** Options are cheap relative to historical volatility. Consider debit strategies or buying premium.")
+                                        else:
+                                            st.success("⚖️ **Balanced Environment:** IV is in line with historical volatility. Fair pricing indicated.")
+                                        
+                                        # Create IV vs HV time series comparison
+                                        fig_iv_hv = go.Figure()
+                                        
+                                        fig_iv_hv.add_trace(go.Scatter(
+                                            x=iv_term_df['days_to_expiry'] if len(iv_term_data) > 0 else [],
+                                            y=iv_term_df['iv'] * 100 if len(iv_term_data) > 0 else [],
+                                            mode='lines+markers',
+                                            name='Implied Volatility',
+                                            line=dict(color='blue', width=3),
+                                            marker=dict(size=8)
+                                        ))
+                                        
+                                        fig_iv_hv.add_hline(
+                                            y=hist_vol * 100,
+                                            line_dash="dash",
+                                            line_color="green",
+                                            line_width=3,
+                                            annotation_text="Historical Volatility (20d)"
+                                        )
+                                        
+                                        fig_iv_hv.update_layout(
+                                            title="IV vs HV: Term Structure Comparison",
+                                            xaxis_title="Days to Expiration",
+                                            yaxis_title="Volatility (%)",
+                                            height=400,
+                                            showlegend=True
+                                        )
+                                        
+                                        st.plotly_chart(fig_iv_hv, use_container_width=True)
+                                else:
+                                    st.warning("Insufficient data to build 3D IV surface. Need more liquid strikes across expirations.")
+                        else:
+                            st.warning("Could not calculate IV - no valid option prices found.")
+                
+                except Exception as e:
+                    st.error(f"Error fetching options chain: {str(e)}")
+    
+    except ImportError:
+        st.error("yfinance library required for live market data")
+    except Exception as e:
+        st.error(f"Error in live data mode: {str(e)}")
+
+else:
+    # Manual Entry Mode (Original code)
+    st.markdown("**Manual IV Calculator**")
     
     iv_col1, iv_col2 = st.columns(2)
     
     with iv_col1:
-        if not use_live_data or not market_option_data:
-            market_price = st.number_input(
-                "Market Option Price ($)", 
-                min_value=0.0, 
-                step=0.01,
-                help="Enter observed market price to calculate implied volatility"
-            )
-        else:
-            st.write(f"**Using Live Market Price:** ${market_price:.3f}")
-            manual_override = st.checkbox("Override with manual price")
-            if manual_override:
-                market_price = st.number_input(
-                    "Manual Option Price ($)", 
-                    value=market_price,
-                    min_value=0.0, 
-                    step=0.01
-                )
+        market_price = st.number_input(
+            "Market Option Price ($)", 
+            min_value=0.0, 
+            step=0.01,
+            help="Enter observed market price to calculate implied volatility"
+        )
         
         if market_price > 0:
             try:
@@ -915,7 +1348,7 @@ def options_page():
         if market_price > 0 and 'implied_vol' in locals():
             # IV vs Historical Vol comparison
             try:
-                if 'hist_vol' in locals():
+                if 'hist_vol' in locals() and online_vol_available:
                     iv_hist_ratio = implied_vol / hist_vol
                     
                     st.metric("IV vs Historical Vol", f"{iv_hist_ratio:.2f}x")
