@@ -353,8 +353,8 @@ def options_page():
     st.subheader("📈 Advanced Visualizations")
     
     # Visualization tabs
-    viz_tab1, viz_tab2, viz_tab3, viz_tab4 = st.tabs([
-        "📊 Greeks Surface", "💹 P&L Analysis", "⏰ Time Decay", "🌊 Volatility Impact"
+    viz_tab1, viz_tab2, viz_tab3, viz_tab4, viz_tab5 = st.tabs([
+        "📊 Greeks Surface", "💹 P&L Analysis", "⏰ Time Decay", "🌊 Volatility Impact", "🎲 3D Price Surface"
     ])
     
     with viz_tab1:
@@ -579,223 +579,181 @@ def options_page():
         
         st.dataframe(scenario_df, use_container_width=True)
     
-    # === MARKET DATA INTEGRATION ===
-    st.subheader("📊 Market Data Integration")
-    
-    use_live_data = st.checkbox(
-        "Use Live Market Option Prices", 
-        help="Fetch real option prices from the market instead of manual input"
-    )
-    
-    market_option_data = None
-    market_price = 0.0
-    
-    if use_live_data:
-        st.info("""
-        **Live Market Data Features:**
-        - Real-time bid/ask/mid prices from Yahoo Finance
-        - Market implied volatility 
-        - Volume and open interest data
-        - Multiple expiration dates available
-        - Automatic strike matching (closest available)
+    with viz_tab5:
+        st.write("**3D Option Price Surface (Stock Price × Time)**")
         
-        **Limitations:**
-        - US equities only • 15-20 min delay • Limited to liquid options
+        st.markdown("""
+        This 3D surface shows how the option value changes with both stock price movements and time decay.
+        The surface demonstrates the **non-linear** relationship between these factors.
         """)
         
-        try:
-            from market_options import get_market_option_price
-            import yfinance as yf
-            
-            # Get available expiration dates
-            stock = yf.Ticker(ticker)
-            exp_dates = stock.options
-            
-            if exp_dates:
-                # Select expiration date closest to our T parameter
-                target_days = T_days
-                exp_date_options = []
-                
-                for exp_str in exp_dates[:6]:  # Limit to first 6 for performance
-                    exp_dt = pd.to_datetime(exp_str)
-                    days_diff = (exp_dt - pd.Timestamp.now()).days
-                    exp_date_options.append((exp_str, days_diff))
-                
-                # Find closest expiration to our target
-                closest_exp = min(exp_date_options, key=lambda x: abs(x[1] - target_days))
-                selected_exp = closest_exp[0]
-                actual_days = closest_exp[1]
-                
-                st.write(f"**Selected Expiration:** {selected_exp} ({actual_days} days)")
-                
-                # Fetch market data for this option
-                with st.spinner("Fetching live market data..."):
-                    market_option_data = get_market_option_price(ticker, K, selected_exp, option_type)
-                
-                if market_option_data:
-                    # Display market data
-                    market_col1, market_col2, market_col3, market_col4 = st.columns(4)
-                    
-                    market_col1.metric("Bid", f"${market_option_data['bid']:.3f}")
-                    market_col2.metric("Ask", f"${market_option_data['ask']:.3f}")
-                    market_col3.metric("Mid Price", f"${market_option_data['mid_price']:.3f}")
-                    market_col4.metric("Last Price", f"${market_option_data['last_price']:.3f}")
-                    
-                    # Additional market info
-                    info_col1, info_col2, info_col3 = st.columns(3)
-                    info_col1.metric("Volume", f"{market_option_data['volume']:,.0f}")
-                    info_col2.metric("Open Interest", f"{market_option_data['open_interest']:,.0f}")
-                    info_col3.metric("Bid-Ask Spread", f"{market_option_data['spread_pct']:.1f}%")
-                    
-                    # Use mid price as the market price
-                    market_price = market_option_data['mid_price']
-                    
-                    # Compare with theoretical price
-                    theory_vs_market = price - market_price
-                    
-                    if abs(theory_vs_market) > 0.05:
-                        if theory_vs_market > 0:
-                            st.warning(f"⚠️ Theoretical price ${theory_vs_market:.3f} higher than market - option may be undervalued")
-                        else:
-                            st.info(f"ℹ️ Market price ${abs(theory_vs_market):.3f} higher than theoretical - option may be overvalued")
-                    else:
-                        st.success("✅ Theoretical and market prices are closely aligned")
-                        
-                    # Update T to match actual expiration
-                    T = actual_days / 365
-                    T_days = actual_days
-                    
-                    # Recalculate with actual time to expiration
-                    price = bs_price(S, K, T, r, sigma, option=option_type)
-                    delta, gamma, vega, theta, rho = greeks(S, K, T, r, sigma, option=option_type)
-                    
-                else:
-                    st.warning("Could not fetch market data for this option. Using manual input.")
-                    use_live_data = False
-                    
-            else:
-                st.warning("No options data available for this ticker. Using manual input.")
-                use_live_data = False
-                
-        except ImportError:
-            st.warning("Market data module not available. Please ensure market_options.py is in the same directory.")
-            use_live_data = False
-        except Exception as e:
-            st.error(f"Error fetching market data: {str(e)}")
-            use_live_data = False
-    
-    # === IMPLIED VOLATILITY SECTION ===
-    st.subheader("🔍 Implied Volatility Analysis")
-    
-    iv_col1, iv_col2 = st.columns(2)
-    
-    with iv_col1:
-        if not use_live_data or not market_option_data:
-            market_price = st.number_input(
-                "Market Option Price ($)", 
-                min_value=0.0, 
-                step=0.01,
-                help="Enter observed market price to calculate implied volatility"
-            )
-        else:
-            st.write(f"**Using Live Market Price:** ${market_price:.3f}")
-            manual_override = st.checkbox("Override with manual price")
-            if manual_override:
-                market_price = st.number_input(
-                    "Manual Option Price ($)", 
-                    value=market_price,
-                    min_value=0.0, 
-                    step=0.01
+        # Create 3D mesh grid
+        S_3d_min = S * 0.7
+        S_3d_max = S * 1.3
+        S_3d_range = np.linspace(S_3d_min, S_3d_max, 40)
+        T_3d_range = np.linspace(T, max(T * 0.1, 1/365), 40)  # From current T down to near expiry
+        
+        S_mesh, T_mesh = np.meshgrid(S_3d_range, T_3d_range)
+        price_mesh = np.zeros_like(S_mesh)
+        
+        # Calculate option prices across the surface
+        with st.spinner("Generating 3D surface..."):
+            for i in range(len(T_3d_range)):
+                for j in range(len(S_3d_range)):
+                    try:
+                        price_mesh[i, j] = bs_price(
+                            S_mesh[i, j], K, T_mesh[i, j], r, sigma, option_type
+                        )
+                    except:
+                        price_mesh[i, j] = np.nan
+        
+        # Create 3D surface plot
+        fig_3d = go.Figure(data=[go.Surface(
+            x=S_mesh,
+            y=T_mesh * 365,  # Convert to days for better readability
+            z=price_mesh,
+            colorscale='Viridis',
+            contours={
+                "z": {"show": True, "usecolormap": True, "highlightcolor": "limegreen", "project": {"z": True}}
+            },
+            colorbar=dict(title="Option<br>Price ($)")
+        )])
+        
+        # Add current position marker
+        fig_3d.add_trace(go.Scatter3d(
+            x=[S],
+            y=[T * 365],
+            z=[price],
+            mode='markers',
+            marker=dict(size=8, color='red', symbol='diamond'),
+            name='Current Position',
+            showlegend=True
+        ))
+        
+        # Update layout
+        fig_3d.update_layout(
+            title=dict(
+                text=f'Black-Scholes {option_type.title()} Option Price Surface<br><sub>Strike: ${K:.2f} | Vol: {sigma:.1%} | Rate: {r:.1%}</sub>',
+                x=0.5,
+                xanchor='center'
+            ),
+            scene=dict(
+                xaxis=dict(title='Stock Price ($)', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                yaxis=dict(title='Time to Expiry (days)', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                zaxis=dict(title='Option Price ($)', backgroundcolor="rgb(230, 230,230)", gridcolor="white"),
+                camera=dict(
+                    eye=dict(x=1.5, y=1.5, z=1.3)
                 )
+            ),
+            height=700,
+            margin=dict(l=0, r=0, b=0, t=80)
+        )
         
-        if market_price > 0:
-            try:
-                def option_price_diff(vol):
-                    return bs_price(S, K, T, r, vol, option_type) - market_price
-                
-                implied_vol = brentq(option_price_diff, 0.001, 5.0)
-                
-                st.success(f"**Implied Volatility: {implied_vol:.2%}**")
-                
-                # Compare with input volatility
-                vol_diff = implied_vol - sigma
-                if abs(vol_diff) > 0.02:  # 2% difference threshold
-                    if vol_diff > 0:
-                        st.warning(f"⚠️ IV is {vol_diff:.2%} higher than assumed volatility")
-                        st.write("**Interpretation:** Option may be expensive relative to expected volatility")
-                    else:
-                        st.info(f"ℹ️ IV is {abs(vol_diff):.2%} lower than assumed volatility")
-                        st.write("**Interpretation:** Option may be cheap relative to expected volatility")
-                else:
-                    st.success("✅ IV is close to assumed volatility - fair pricing indicated")
-                        
-            except (ValueError, RuntimeError):
-                st.error("❌ Could not calculate implied volatility. Check if market price is reasonable.")
-    
-    with iv_col2:
-        if market_price > 0 and 'implied_vol' in locals():
-            # IV vs Historical Vol comparison
-            try:
-                if 'hist_vol' in locals():
-                    iv_hist_ratio = implied_vol / hist_vol
-                    
-                    st.metric("IV vs Historical Vol", f"{iv_hist_ratio:.2f}x")
-                    
-                    if iv_hist_ratio > 1.2:
-                        st.warning("🔺 IV significantly above historical - high premium")
-                    elif iv_hist_ratio < 0.8:
-                        st.info("🔻 IV below historical - potentially undervalued")
-                    else:
-                        st.success("⚖️ IV in line with historical volatility")
-            except:
-                pass
-    
-    # === EDUCATIONAL SUMMARY ===
-    with st.expander("📚 Options Trading Insights & Key Concepts"):
-        insights_col1, insights_col2 = st.columns(2)
+        st.plotly_chart(fig_3d, use_container_width=True)
         
-        with insights_col1:
+        # Add interactive controls
+        col_3d1, col_3d2 = st.columns(2)
+        
+        with col_3d1:
             st.markdown("""
-            **🎯 Key Takeaways for This Option:**
+            **🎯 How to Read This Chart:**
+            - **X-axis:** Stock price range (±30% from current)
+            - **Y-axis:** Time remaining until expiration
+            - **Z-axis (height):** Option value
+            - **Red diamond:** Your current position
             """)
-            
-            # Dynamic insights based on current option characteristics
-            insights = []
-            
-            if abs(delta) > 0.7:
-                insights.append(f"• **High Delta ({delta:.2f}):** Acts like {abs(delta):.0%} of stock position")
-            
-            if gamma > 0.05:
-                insights.append(f"• **High Gamma:** Delta changes rapidly - position risk accelerates near strike")
-            
-            if abs(theta) > 3:
-                insights.append(f"• **Significant Time Decay:** Losing ${abs(theta):.2f}/day - time is critical")
-            
-            if time_value / price > 0.7 if price > 0.01 else False:
-                insights.append(f"• **High Time Value:** {time_value/price:.0%} of price is time premium")
-            
-            if abs(vega) > 10:
-                insights.append(f"• **Volatility Sensitive:** ±$1 change per 1% volatility move")
-            
-            for insight in insights:
-                st.markdown(insight)
         
-        with insights_col2:
+        with col_3d2:
             st.markdown("""
-            **📖 Black-Scholes Model Assumptions:**
-            - European exercise (only at expiration)
-            - Constant volatility and interest rates  
-            - No dividends during option life
-            - Continuous trading with no gaps
-            - Log-normal stock price distribution
-            
-            **⚠️ Real-World Considerations:**
-            - Bid-ask spreads and transaction costs
-            - Early exercise features (American options)
-            - Dividend adjustments
-            - Volatility smile/skew effects
-            - Interest rate and yield curve risks
+            **📊 Key Observations:**
+            - **Surface steepness** = Delta sensitivity
+            - **Curvature** = Gamma effects
+            - **Downward slope (time axis)** = Theta decay
+            - **Distance from intrinsic value** = Time premium
             """)
-
-if __name__ == "__main__":
-    options_page()
+        
+        # Cross-section analysis
+        st.markdown("---")
+        st.write("**📍 Cross-Section Analysis**")
+        
+        slice_option = st.radio(
+            "Select cross-section view:",
+            ["Fixed Time (vary price)", "Fixed Price (vary time)"],
+            horizontal=True
+        )
+        
+        if slice_option == "Fixed Time (vary price)":
+            # Show how price changes with stock price at current time
+            fixed_T = T
+            slice_prices = [bs_price(s, K, fixed_T, r, sigma, option_type) for s in S_3d_range]
+            
+            fig_slice = go.Figure()
+            fig_slice.add_trace(go.Scatter(
+                x=S_3d_range,
+                y=slice_prices,
+                mode='lines',
+                name=f'Option Price (T={T_days} days)',
+                line=dict(color='blue', width=3)
+            ))
+            
+            # Add intrinsic value line
+            if option_type == 'call':
+                intrinsic_line = [max(0, s - K) for s in S_3d_range]
+            else:
+                intrinsic_line = [max(0, K - s) for s in S_3d_range]
+            
+            fig_slice.add_trace(go.Scatter(
+                x=S_3d_range,
+                y=intrinsic_line,
+                mode='lines',
+                name='Intrinsic Value',
+                line=dict(color='red', width=2, dash='dash')
+            ))
+            
+            fig_slice.add_vline(x=S, line_dash="dot", line_color="black", annotation_text="Current")
+            fig_slice.add_vline(x=K, line_dash="dot", line_color="red", annotation_text="Strike")
+            
+            fig_slice.update_layout(
+                title=f"Price vs Stock Price (T = {T_days} days)",
+                xaxis_title="Stock Price ($)",
+                yaxis_title="Option Value ($)",
+                height=400
+            )
+            
+            st.plotly_chart(fig_slice, use_container_width=True)
+            
+        else:
+            # Show how price changes with time at current stock price
+            fixed_S = S
+            time_days = T_3d_range * 365
+            slice_prices = [bs_price(fixed_S, K, t, r, sigma, option_type) for t in T_3d_range]
+            
+            fig_slice = go.Figure()
+            fig_slice.add_trace(go.Scatter(
+                x=time_days,
+                y=slice_prices,
+                mode='lines',
+                name=f'Option Price (S=${fixed_S:.2f})',
+                line=dict(color='purple', width=3)
+            ))
+            
+            # Add intrinsic value line
+            if option_type == 'call':
+                intrinsic_val = max(0, fixed_S - K)
+            else:
+                intrinsic_val = max(0, K - fixed_S)
+            
+            fig_slice.add_hline(y=intrinsic_val, line_dash="dash", line_color="red",
+                              annotation_text="Intrinsic Value")
+            fig_slice.add_vline(x=T_days, line_dash="dot", line_color="black",
+                              annotation_text="Current")
+            
+            fig_slice.update_layout(
+                title=f"Price vs Time to Expiry (S = ${fixed_S:.2f})",
+                xaxis_title="Time to Expiry (days)",
+                yaxis_title="Option Value ($)",
+                height=400,
+                xaxis=dict(autorange="reversed")  # Time goes down as we approach expiry
+            )
+            
+            st.plotly_chart(fig_slice, use_container_width=True)
